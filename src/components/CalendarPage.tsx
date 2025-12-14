@@ -8,6 +8,7 @@ import {
   Menu
 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
+import { SidebarEnhanced } from './SidebarEnhanced';
 import AppointmentModal from './AppointmentModal';
 import CalendarJobCard from './CalendarJobCard';
 import JobDetailDrawer from './JobDetailDrawer';
@@ -263,7 +264,7 @@ export default function CalendarPage({ onNavigate }: { onNavigate?: (page: strin
             transform: showMobileSidebar ? 'translateX(0)' : 'translateX(-100%)',
             transition: 'transform 0.3s ease'
           }}>
-            <Sidebar 
+            <SidebarEnhanced 
               activePage="Calendar" 
               darkMode={true} 
               onNavigate={(page) => {
@@ -277,13 +278,13 @@ export default function CalendarPage({ onNavigate }: { onNavigate?: (page: strin
 
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <Sidebar activePage="Calendar" darkMode={true} onNavigate={onNavigate} />
+        <SidebarEnhanced activePage="Calendar" darkMode={true} onNavigate={onNavigate} />
       )}
 
       {/* Main Content */}
       <div style={{
         flex: 1,
-        marginLeft: isMobile ? '0' : '160px',
+        marginLeft: isMobile ? '0' : '220px',
         backgroundColor: '#0D0D0D',
         display: 'flex',
         flexDirection: 'column',

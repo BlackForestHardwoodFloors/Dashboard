@@ -14,6 +14,7 @@ import {
   Menu
 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
+import { SidebarEnhanced } from './SidebarEnhanced';
 
 // Types
 type LogType = 'Regular' | 'Overtime' | 'Sick';
@@ -768,7 +769,7 @@ export default function TimeLogsPage({
             transform: showMobileSidebar ? 'translateX(0)' : 'translateX(-100%)',
             transition: 'transform 0.3s ease'
           }}>
-            <Sidebar 
+            <SidebarEnhanced 
               activePage="Time Sheet" 
               darkMode={true} 
               onNavigate={(page) => {
@@ -782,7 +783,7 @@ export default function TimeLogsPage({
 
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <Sidebar activePage="Time Sheet" darkMode={true} onNavigate={onNavigate} />
+        <SidebarEnhanced activePage="Time Sheet" darkMode={true} onNavigate={onNavigate} />
       )}
 
       {/* Main Content */}
@@ -790,7 +791,7 @@ export default function TimeLogsPage({
         flex: 1, 
         display: 'flex', 
         flexDirection: 'column', 
-        marginLeft: isMobile ? '0' : '160px', 
+        marginLeft: isMobile ? '0' : '220px', 
         backgroundColor: '#262626', 
         minWidth: 0, 
         minHeight: 0,

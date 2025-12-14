@@ -4,28 +4,93 @@ import TimeLogsPage from './components/TimeLogsPage';
 import ClientsPage from './components/ClientsPage';
 import CalendarPage from './components/CalendarPage';
 import PhotosPage from './components/PhotosPage';
+import MessagesPage from './components/MessagesPage';
+import QuotesPage from './components/QuotesPage';
+import ContractsPage from './components/ContractsPage';
+import JobsPage from './components/JobsPage';
+import WorkOrdersPage from './components/WorkOrdersPage';
+import ItemsPage from './components/ItemsPage';
+import VendorsPage from './components/VendorsPage';
+import SettingsPage from './components/SettingsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EmployeePortal } from './components/EmployeePortal';
 
+// Define all possible views
+type ViewType = 
+  | 'dashboard' 
+  | 'messages'
+  | 'clients' 
+  | 'calendar' 
+  | 'quotes'
+  | 'contracts'
+  | 'work-orders'
+  | 'jobs'
+  | 'photos'
+  | 'time-sheet' 
+  | 'items'
+  | 'vendors'
+  | 'reviews'
+  | 'settings';
+
 export default function App() {
   const [appMode, setAppMode] = useState<'admin' | 'employee' | 'customer'>('admin');
-  const [currentView, setCurrentView] = useState<'dashboard' | 'time-sheet' | 'clients' | 'calendar' | 'photos'>('dashboard');
+  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [switcherPosition, setSwitcherPosition] = useState({ x: 20, y: window.innerHeight - 180 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
+  // Enhanced navigation handler that maps page names to views
   const handleNavigate = (page: string) => {
-    if (page === 'Dashboard') {
-      setCurrentView('dashboard');
-    } else if (page === 'Time Sheet') {
-      setCurrentView('time-sheet');
-    } else if (page === 'Client') {
-      setCurrentView('clients');
-    } else if (page === 'Calendar') {
-      setCurrentView('calendar');
-    } else if (page === 'Photos') {
-      setCurrentView('photos');
-    }
+    const pageMap: Record<string, ViewType> = {
+      'Dashboard': 'dashboard',
+      'Messages': 'messages',
+      'Clients': 'clients',
+      'Clients/Contractors': 'clients',
+      'Clients/Locations': 'clients',
+      'Clients/Company': 'clients',
+      'Calendar': 'calendar',
+      'Calendar/SiteVisits': 'calendar',
+      'Calendar/ScheduledJobs': 'calendar',
+      'Calendar/WoodDelivery': 'calendar',
+      'Calendar/Attachments': 'calendar',
+      'Appointments': 'calendar',
+      'Quotes': 'quotes',
+      'Quotes/Draft': 'quotes',
+      'Quotes/Sent': 'quotes',
+      'Quotes/Accepted': 'quotes',
+      'Quotes/Rejected': 'quotes',
+      'Contracts': 'contracts',
+      'Contracts/Sent': 'contracts',
+      'Contracts/Signed': 'contracts',
+      'WorkOrders': 'work-orders',
+      'Work Orders': 'work-orders',
+      'Jobs': 'jobs',
+      'Jobs/ReadyToStart': 'jobs',
+      'Jobs/InProgress': 'jobs',
+      'Jobs/Completed': 'jobs',
+      'Photos': 'photos',
+      'Time Sheet': 'time-sheet',
+      'Time Sheet/WageRate': 'time-sheet',
+      'Time Sheet/GeneralTasks': 'time-sheet',
+      'Time Sheet/WeeklyReport': 'time-sheet',
+      'Time Sheet/Payroll': 'time-sheet',
+      'Timesheet': 'time-sheet',
+      'Items': 'items',
+      'Vendors': 'vendors',
+      'Vendors/Contacts': 'vendors',
+      'Vendors/PriceList': 'vendors',
+      'Reviews': 'reviews',
+      'Settings': 'settings',
+      'Settings/Employees': 'settings',
+      'Settings/Departments': 'settings',
+      'Settings/Roles': 'settings',
+      'Settings/Taxes': 'settings',
+      // Legacy mappings
+      'Client': 'clients',
+    };
+
+    const view = pageMap[page] || 'dashboard';
+    setCurrentView(view);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -58,6 +123,48 @@ export default function App() {
       };
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  // Render the appropriate page based on currentView
+  const renderAdminContent = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return <FullDashboard onNavigate={handleNavigate} />;
+      case 'messages':
+        return <MessagesPage onNavigate={handleNavigate} />;
+      case 'clients':
+        return <ClientsPage onNavigate={handleNavigate} />;
+      case 'calendar':
+        return <CalendarPage onNavigate={handleNavigate} />;
+      case 'quotes':
+        return <QuotesPage onNavigate={handleNavigate} />;
+      case 'contracts':
+        return <ContractsPage onNavigate={handleNavigate} />;
+      case 'work-orders':
+        return <WorkOrdersPage onNavigate={handleNavigate} />;
+      case 'jobs':
+        return <JobsPage onNavigate={handleNavigate} />;
+      case 'photos':
+        return <PhotosPage onNavigate={handleNavigate} />;
+      case 'time-sheet':
+        return <TimeLogsPage onNavigate={handleNavigate} />;
+      case 'items':
+        return <ItemsPage onNavigate={handleNavigate} />;
+      case 'vendors':
+        return <VendorsPage onNavigate={handleNavigate} />;
+      case 'settings':
+        return <SettingsPage onNavigate={handleNavigate} />;
+      case 'reviews':
+        // Placeholder for reviews page
+        return (
+          <div style={{ marginLeft: '220px', padding: '24px', minHeight: '100vh', backgroundColor: '#1E1E1E' }}>
+            <h1 style={{ color: '#FFFFFF', fontSize: '28px', marginBottom: '8px' }}>Reviews</h1>
+            <p style={{ color: '#A0A0A0' }}>Reviews page coming soon...</p>
+          </div>
+        );
+      default:
+        return <FullDashboard onNavigate={handleNavigate} />;
+    }
+  };
 
   return (
     <ErrorBoundary>
@@ -176,24 +283,12 @@ export default function App() {
             textAlign: 'center'
           }}>
             <h1 style={{ color: '#333', marginBottom: '16px' }}>Customer Portal</h1>
-            <p style={{ color: '#666', fontSize: '16px' }}>The Customer Portal component has been removed.</p>
+            <p style={{ color: '#666', fontSize: '16px' }}>The Customer Portal component is coming soon.</p>
           </div>
         ) : appMode === 'employee' ? (
           <EmployeePortal />
         ) : (
-          <>
-            {currentView === 'dashboard' ? (
-              <FullDashboard onNavigate={handleNavigate} />
-            ) : currentView === 'time-sheet' ? (
-              <TimeLogsPage onNavigate={handleNavigate} />
-            ) : currentView === 'clients' ? (
-              <ClientsPage onNavigate={handleNavigate} />
-            ) : currentView === 'calendar' ? (
-              <CalendarPage onNavigate={handleNavigate} />
-            ) : (
-              <PhotosPage onNavigate={handleNavigate} />
-            )}
-          </>
+          renderAdminContent()
         )}
       </main>
     </ErrorBoundary>

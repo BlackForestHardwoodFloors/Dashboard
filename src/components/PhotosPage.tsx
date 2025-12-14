@@ -29,6 +29,7 @@ import {
   Menu
 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
+import { SidebarEnhanced } from './SidebarEnhanced';
 import PhotoCard from './PhotoCard';
 import PhotoDetailModal from './PhotoDetailModal';
 import JobPhotoGallery from './JobPhotoGallery';
@@ -761,7 +762,7 @@ export default function PhotosPage({ onNavigate }: { onNavigate?: (page: string)
             transform: showMobileSidebar ? 'translateX(0)' : 'translateX(-100%)',
             transition: 'transform 0.3s ease'
           }}>
-            <Sidebar 
+            <SidebarEnhanced 
               activePage="Photos" 
               darkMode={true} 
               onNavigate={(page) => {
@@ -775,13 +776,13 @@ export default function PhotosPage({ onNavigate }: { onNavigate?: (page: string)
 
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <Sidebar activePage="Photos" darkMode={true} onNavigate={onNavigate} />
+        <SidebarEnhanced activePage="Photos" darkMode={true} onNavigate={onNavigate} />
       )}
 
       {/* Main Content */}
       <div style={{ 
         flex: 1, 
-        marginLeft: isMobile ? '0' : '160px',
+        marginLeft: isMobile ? '0' : '220px',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden'

@@ -5,7 +5,7 @@ import {
   TrendingUp, Users, Bell, Search, Star, Menu, X
 } from 'lucide-react';
 import { Button } from './Button';
-import { Sidebar } from './Sidebar';
+import { SidebarEnhanced } from './SidebarEnhanced';
 
 export function FullDashboard({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [darkMode, setDarkMode] = useState(true);
@@ -166,7 +166,7 @@ export function FullDashboard({ onNavigate }: { onNavigate?: (page: string) => v
             transform: showMobileSidebar ? 'translateX(0)' : 'translateX(-100%)',
             transition: 'transform 0.3s ease'
           }}>
-            <Sidebar 
+            <SidebarEnhanced 
               activePage="Dashboard" 
               darkMode={darkMode} 
               onNavigate={(page) => {
@@ -181,14 +181,14 @@ export function FullDashboard({ onNavigate }: { onNavigate?: (page: string) => v
 
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <Sidebar activePage="Dashboard" darkMode={darkMode} onNavigate={onNavigate} onToggleDarkMode={() => setDarkMode(!darkMode)} />
+        <SidebarEnhanced activePage="Dashboard" darkMode={darkMode} onNavigate={onNavigate} onToggleDarkMode={() => setDarkMode(!darkMode)} />
       )}
 
       {/* Main Content */}
       <main style={{ 
         flex: 1, 
         overflowY: 'auto', 
-        marginLeft: isMobile ? '0' : '160px',
+        marginLeft: isMobile ? '0' : '220px',
         width: isMobile ? '100%' : 'auto'
       }}>
         {/* Mobile Header with Menu Button */}

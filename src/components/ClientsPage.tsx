@@ -43,6 +43,7 @@ import {
   MoreVertical
 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
+import { SidebarEnhanced } from './SidebarEnhanced';
 import NewClientModal from './NewClientModal';
 import BoardroomNewClientModal from './BoardroomNewClientModal';
 
@@ -1476,13 +1477,13 @@ export default function ClientsPage({ onNavigate }: { onNavigate?: (page: string
 
   return (
     <div style={{ display: 'flex', height: '100vh', backgroundColor: '#1A1A1A', overflow: 'hidden' }}>
-      <Sidebar activePage="Client" darkMode={true} onNavigate={onNavigate} />
+      <SidebarEnhanced activePage="Clients" darkMode={true} onNavigate={onNavigate} />
 
       {/* Main Content - Two Column Layout */}
       <div style={{ 
         flex: 1, 
         display: 'flex',
-        marginLeft: '160px', 
+        marginLeft: '220px', 
         backgroundColor: '#262626',
         overflow: 'hidden'
       }}>
