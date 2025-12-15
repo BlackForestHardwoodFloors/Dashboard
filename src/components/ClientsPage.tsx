@@ -1483,9 +1483,9 @@ export default function ClientsPage({ onNavigate }: { onNavigate?: (page: string
       <div style={{ 
         flex: 1, 
         display: 'flex',
-        marginLeft: '220px', 
+        marginLeft: '160px', 
         backgroundColor: '#262626',
-        overflow: 'hidden'
+        overflow: 'auto'
       }}>
         
         {/* LEFT COLUMN - Clients List */}
@@ -2007,10 +2007,64 @@ export default function ClientsPage({ onNavigate }: { onNavigate?: (page: string
                   </div>
 
                   {/* Quick Actions */}
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <GoldButton icon={FileText} size="sm">New Quote</GoldButton>
-                    <GoldButton icon={Calendar} size="sm" variant="secondary">Schedule Visit</GoldButton>
-                    <GoldButton icon={Briefcase} size="sm" variant="secondary">New Job</GoldButton>
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                    <button
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        backgroundColor: '#C9A049',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <FileText size={14} />
+                      New Quote
+                    </button>
+                    <button
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        backgroundColor: 'transparent',
+                        color: '#C9A049',
+                        border: '1px solid #C9A049',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <Calendar size={14} />
+                      Schedule
+                    </button>
+                    <button
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        backgroundColor: 'transparent',
+                        color: '#C9A049',
+                        border: '1px solid #C9A049',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <Briefcase size={14} />
+                      New Job
+                    </button>
                     <IconButton icon={ExternalLink} color="#3B9CAA" tooltip="Client Portal" />
                   </div>
                 </div>

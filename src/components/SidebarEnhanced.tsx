@@ -9,7 +9,7 @@
  * - Mobile responsive
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, ReactNode } from 'react';
 import { 
   Home, 
   Calendar, 
@@ -49,6 +49,136 @@ import {
   Contact,
   ListOrdered
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+
+// Tooltip component that renders outside the sidebar using portal
+function TooltipPortal({ 
+  children, 
+  content, 
+  position = 'right' 
+}: { 
+  children: ReactNode; 
+  content: string; 
+  position?: 'top' | 'bottom' | 'left' | 'right';
+}) {
+  const [isVisible, setIsVisible] = useState(false);
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  const showTooltip = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      let x = 0;
+      let y = 0;
+
+      switch (position) {
+        case 'top':
+          x = rect.left + rect.width / 2;
+          y = rect.top - 12;
+          break;
+        case 'bottom':
+          x = rect.left + rect.width / 2;
+          y = rect.bottom + 12;
+          break;
+        case 'left':
+          x = rect.left - 12;
+          y = rect.top + rect.height / 2;
+          break;
+        case 'right':
+          x = rect.right + 12;
+          y = rect.top + rect.height / 2;
+          break;
+      }
+
+      setCoords({ x, y });
+      setIsVisible(true);
+    }
+  };
+
+  const hideTooltip = () => {
+    setIsVisible(false);
+  };
+
+  const getTransform = () => {
+    switch (position) {
+      case 'top': return 'translateX(-50%) translateY(-100%)';
+      case 'bottom': return 'translateX(-50%)';
+      case 'left': return 'translateX(-100%) translateY(-50%)';
+      case 'right': return 'translateY(-50%)';
+    }
+  };
+
+  const getArrowStyles = (): React.CSSProperties => {
+    const base: React.CSSProperties = {
+      position: 'absolute',
+      width: 0,
+      height: 0,
+      borderStyle: 'solid',
+    };
+    switch (position) {
+      case 'top':
+        return { ...base, bottom: -8, left: '50%', transform: 'translateX(-50%)', borderWidth: '8px 8px 0 8px', borderColor: '#D4A024 transparent transparent transparent' };
+      case 'bottom':
+        return { ...base, top: -8, left: '50%', transform: 'translateX(-50%)', borderWidth: '0 8px 8px 8px', borderColor: 'transparent transparent #D4A024 transparent' };
+      case 'left':
+        return { ...base, right: -8, top: '50%', transform: 'translateY(-50%)', borderWidth: '8px 0 8px 8px', borderColor: 'transparent transparent transparent #D4A024' };
+      case 'right':
+        return { ...base, left: -8, top: '50%', transform: 'translateY(-50%)', borderWidth: '8px 8px 8px 0', borderColor: 'transparent #D4A024 transparent transparent' };
+    }
+  };
+
+  return (
+    <>
+      <div
+        ref={triggerRef}
+        onMouseEnter={showTooltip}
+        onMouseLeave={hideTooltip}
+        style={{ display: 'inline-block' }}
+      >
+        {children}
+      </div>
+      {isVisible && createPortal(
+        <div
+          role="tooltip"
+          style={{
+            position: 'fixed',
+            left: coords.x,
+            top: coords.y,
+            transform: getTransform(),
+            zIndex: 99999,
+            pointerEvents: 'none',
+            animation: 'tooltipFadeIn 0.2s ease-out',
+          }}
+        >
+          <style>{`
+            @keyframes tooltipFadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+          `}</style>
+          <div style={{
+            backgroundColor: '#1A1A1A',
+            color: '#FFFFFF',
+            padding: '10px 16px',
+            borderRadius: '10px',
+            fontSize: '14px',
+            fontWeight: 500,
+            lineHeight: 1.4,
+            textAlign: 'center',
+            border: '2px solid #D4A024',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.2)',
+            whiteSpace: 'nowrap',
+            position: 'relative',
+          }}>
+            {content}
+            <div style={getArrowStyles()} />
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
 
 // Color sets matching the Figma Make button-plastic component
 const colorSets: Record<string, { base: string; highlight: string; shadow: string; hover: string; active: string }> = {
@@ -522,20 +652,22 @@ export function SidebarEnhanced({
         left: '50%',
         transform: 'translateX(-50%)'
       }}>
-        <button style={{
-          width: '56px',
-          height: '56px',
-          backgroundColor: '#DC3545',
-          border: 'none',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          position: 'relative',
-          boxShadow: '0 4px 12px rgba(220, 53, 69, 0.4)',
-          animation: hasAlerts ? 'bellPulsate 2s ease-in-out infinite' : 'none'
-        }}>
+        <TooltipPortal content="40 Notifications" position="right">
+          <button 
+            style={{
+              width: '56px',
+              height: '56px',
+              backgroundColor: '#DC3545',
+              border: 'none',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              position: 'relative',
+              boxShadow: '0 4px 12px rgba(220, 53, 69, 0.4)',
+              animation: hasAlerts ? 'bellPulsate 2s ease-in-out infinite' : 'none'
+            }}>
           <Bell style={{ width: '28px', height: '28px', color: '#FFFFFF' }} />
           {/* Notification Badge */}
           <div style={{
@@ -557,6 +689,7 @@ export function SidebarEnhanced({
             40
           </div>
         </button>
+        </TooltipPortal>
       </div>
 
       {/* Top Icons */}
@@ -567,41 +700,46 @@ export function SidebarEnhanced({
         borderBottom: `1px solid ${borderColor}`
       }}>
         {/* Search Button */}
-        <button style={{
-          flex: 1,
-          height: '40px',
-          backgroundColor: darkMode ? '#3D3D3D' : '#F5F5F5',
-          border: `1px solid ${borderColor}`,
-          borderRadius: '10px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer'
-        }}>
-          <Search style={{ width: '18px', height: '18px', color: darkMode ? '#FFFFFF' : '#1A1A1A' }} />
-        </button>
+        <TooltipPortal content="Search" position="bottom">
+          <button 
+            style={{
+              flex: 1,
+              height: '40px',
+              backgroundColor: darkMode ? '#3D3D3D' : '#F5F5F5',
+              border: `1px solid ${borderColor}`,
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}>
+            <Search style={{ width: '18px', height: '18px', color: darkMode ? '#FFFFFF' : '#1A1A1A' }} />
+          </button>
+        </TooltipPortal>
 
         {/* Dark Mode Toggle */}
-        <button
-          onClick={onToggleDarkMode}
-          style={{
-            flex: 1,
-            height: '40px',
-            backgroundColor: darkMode ? '#3D3D3D' : '#F5F5F5',
-            border: `1px solid ${borderColor}`,
-            borderRadius: '10px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer'
-          }}
-        >
-          {darkMode ? (
-            <Moon style={{ width: '18px', height: '18px', color: '#FFFFFF' }} />
-          ) : (
-            <Sun style={{ width: '18px', height: '18px', color: '#1A1A1A' }} />
-          )}
-        </button>
+        <TooltipPortal content={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"} position="bottom">
+          <button
+            onClick={onToggleDarkMode}
+            style={{
+              flex: 1,
+              height: '40px',
+              backgroundColor: darkMode ? '#3D3D3D' : '#F5F5F5',
+              border: `1px solid ${borderColor}`,
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            {darkMode ? (
+              <Moon style={{ width: '18px', height: '18px', color: '#FFFFFF' }} />
+            ) : (
+              <Sun style={{ width: '18px', height: '18px', color: '#1A1A1A' }} />
+            )}
+          </button>
+        </TooltipPortal>
       </div>
 
       {/* Menu Items */}
