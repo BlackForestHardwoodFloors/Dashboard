@@ -3,6 +3,7 @@
  * 
  * Features:
  * - Expandable dropdown sub-menus
+ * - 3D Plastic button styling matching Figma Make design
  * - Role-based menu visibility
  * - Dark/Light mode support
  * - Mobile responsive
@@ -17,7 +18,7 @@ import {
   FileSignature,
   ClipboardList, 
   Briefcase, 
-  Clock, 
+  Clock3, 
   MessageSquare, 
   Camera,
   Package, 
@@ -49,6 +50,115 @@ import {
   ListOrdered
 } from 'lucide-react';
 
+// Color sets matching the Figma Make button-plastic component
+const colorSets: Record<string, { base: string; highlight: string; shadow: string; hover: string; active: string }> = {
+  dashboard: {
+    base: '#D4A024',
+    highlight: '#EFCB5A',
+    shadow: '#A8801C',
+    hover: '#E2B542',
+    active: '#AF861C'
+  },
+  calendar: {
+    base: '#3B9CAA',
+    highlight: '#62C6D4',
+    shadow: '#2A727D',
+    hover: '#4FB6C3',
+    active: '#26717A'
+  },
+  client: {
+    base: '#7BAA8E',
+    highlight: '#A7D2B8',
+    shadow: '#5F846C',
+    hover: '#8CC3A6',
+    active: '#557A63'
+  },
+  quotes: {
+    base: '#6E8B3D',
+    highlight: '#9FBD63',
+    shadow: '#4F6830',
+    hover: '#82A64F',
+    active: '#485E2C'
+  },
+  contracts: {
+    base: '#4F6A41',
+    highlight: '#7B9F6C',
+    shadow: '#384D2F',
+    hover: '#628053',
+    active: '#324227'
+  },
+  jobs: {
+    base: '#55624C',
+    highlight: '#7B8F73',
+    shadow: '#3D4737',
+    hover: '#687C61',
+    active: '#374133'
+  },
+  workOrders: {
+    base: '#4A7268',
+    highlight: '#6FA096',
+    shadow: '#35554E',
+    hover: '#5C8C7E',
+    active: '#2F4B45'
+  },
+  timeSheet: {
+    base: '#D76A6A',
+    highlight: '#F1A3A3',
+    shadow: '#A84C4C',
+    hover: '#E57C7C',
+    active: '#9A4545'
+  },
+  messages: {
+    base: '#8A6E8C',
+    highlight: '#B69DB8',
+    shadow: '#6A536C',
+    hover: '#9D80A0',
+    active: '#5E4A5F'
+  },
+  photos: {
+    base: '#0F7BFF',
+    highlight: '#5BA7FF',
+    shadow: '#0A4EB2',
+    hover: '#2A8FFF',
+    active: '#0A46A5'
+  },
+  items: {
+    base: '#6B6D5E',
+    highlight: '#93968A',
+    shadow: '#52544A',
+    hover: '#838671',
+    active: '#565749'
+  },
+  vendors: {
+    base: '#6B6456',
+    highlight: '#938B7A',
+    shadow: '#534D42',
+    hover: '#83795C',
+    active: '#565048'
+  },
+  reviews: {
+    base: '#D4A024',
+    highlight: '#EFCB5A',
+    shadow: '#A8801C',
+    hover: '#E2B542',
+    active: '#AF861C'
+  },
+  settings: {
+    base: '#78909C',
+    highlight: '#A0BCC9',
+    shadow: '#5E717C',
+    hover: '#8FA8B3',
+    active: '#61757F'
+  },
+  subItem: {
+    base: '#4A4A4A',
+    highlight: '#6A6A6A',
+    shadow: '#2A2A2A',
+    hover: '#5A5A5A',
+    active: '#3A3A3A'
+  }
+};
+
 interface SubMenuItem {
   label: string;
   icon: any;
@@ -59,6 +169,7 @@ interface MenuItem {
   icon: any;
   label: string;
   path: string;
+  colorKey: string;
   subItems?: SubMenuItem[];
 }
 
@@ -68,6 +179,158 @@ interface SidebarEnhancedProps {
   darkMode?: boolean;
   onToggleDarkMode?: () => void;
   userRole?: 'admin' | 'manager' | 'member';
+}
+
+// 3D Plastic Button Component matching Figma Make style
+function PlasticButton({ 
+  colorKey, 
+  icon: Icon, 
+  label, 
+  isActive, 
+  onClick,
+  hasDropdown,
+  isExpanded,
+  size = 'normal'
+}: { 
+  colorKey: string;
+  icon: any;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+  hasDropdown?: boolean;
+  isExpanded?: boolean;
+  size?: 'normal' | 'small';
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+  
+  const colors = colorSets[colorKey] || colorSets.settings;
+  
+  // Determine current state colors
+  let currentBase = colors.base;
+  if (isPressed) {
+    currentBase = colors.active;
+  } else if (isHovered) {
+    currentBase = colors.hover;
+  } else if (isActive) {
+    currentBase = colors.hover;
+  }
+
+  // Create the plastic gradient effect
+  const plasticGradient = isPressed
+    ? `linear-gradient(to bottom, 
+        ${colors.shadow} 0%, 
+        ${currentBase} 20%, 
+        ${currentBase} 100%)`
+    : `linear-gradient(to bottom, 
+        ${colors.highlight} 0%, 
+        ${currentBase} 30%, 
+        ${currentBase} 70%, 
+        ${colors.shadow} 100%)`;
+
+  // Glossy reflection overlay
+  const glossIntensity = isPressed ? 0.15 : (isHovered ? 0.35 : 0.25);
+  const glossOverlay = `linear-gradient(to bottom,
+    rgba(255, 255, 255, ${glossIntensity}) 0%,
+    rgba(255, 255, 255, ${glossIntensity * 0.6}) 25%,
+    rgba(255, 255, 255, 0) 50%,
+    rgba(0, 0, 0, 0) 100%)`;
+
+  // Box shadows for depth
+  const outerShadow = (isPressed || isActive)
+    ? `0 1px 2px rgba(0, 0, 0, 0.2)`
+    : isHovered
+    ? `0 6px 16px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.15)`
+    : `0 4px 12px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.12)`;
+
+  const innerShadow = (isPressed || isActive)
+    ? `inset 0 3px 8px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.3)`
+    : `inset 0 -1px 1px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.3)`;
+
+  const height = size === 'small' ? 28 : 34;
+  const fontSize = size === 'small' ? 11 : 13;
+  const iconSize = size === 'small' ? 14 : 16;
+  const borderRadius = size === 'small' ? 6 : 8;
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height,
+        padding: '0 12px',
+        fontSize,
+        fontWeight: 600,
+        color: 'white',
+        border: 'none',
+        borderRadius,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+        background: plasticGradient,
+        boxShadow: `${outerShadow}, ${innerShadow}`,
+        transition: 'all 0.15s ease-out',
+        transform: (isPressed || isActive) ? 'translateY(2px) scale(0.98)' : 'translateY(0) scale(1)',
+        textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
+        overflow: 'hidden',
+        userSelect: 'none'
+      }}
+    >
+      {/* Glossy overlay layer */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: glossOverlay,
+          borderRadius,
+          pointerEvents: 'none',
+          mixBlendMode: 'overlay'
+        }}
+      />
+
+      {/* Content */}
+      <div style={{ 
+        position: 'relative', 
+        zIndex: 1, 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 10,
+        flex: 1
+      }}>
+        <div style={{ 
+          width: iconSize, 
+          height: iconSize, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          flexShrink: 0
+        }}>
+          <Icon style={{ width: iconSize, height: iconSize }} />
+        </div>
+        <span style={{ textAlign: 'left', flex: 1 }}>{label}</span>
+      </div>
+      
+      {/* Dropdown arrow */}
+      {hasDropdown && (
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          {isExpanded 
+            ? <ChevronDown style={{ width: 14, height: 14 }} />
+            : <ChevronRight style={{ width: 14, height: 14 }} />
+          }
+        </div>
+      )}
+    </button>
+  );
 }
 
 export function SidebarEnhanced({ 
@@ -82,28 +345,19 @@ export function SidebarEnhanced({
 
   const bgColor = darkMode ? '#2D2D2D' : '#FFFFFF';
   const borderColor = darkMode ? '#3D3D3D' : '#E5E5E5';
-  const textColor = darkMode ? '#FFFFFF' : '#1E1E1E';
-  const textMuted = darkMode ? '#A0A0A0' : '#666666';
-  const hoverBg = darkMode ? '#3D3D3D' : '#F5F5F5';
-  const activeBg = darkMode ? '#4A3728' : '#FFF3E0';
-  const accentColor = '#D4A024';
 
-  // Menu configuration matching your backend structure
+  // Simulate having alerts - you can make this a prop later
+  const hasAlerts = true;
+
+  // Menu configuration matching your backend structure with Figma Make colors
   const menuConfig: MenuItem[] = [
-    { 
-      icon: Home, 
-      label: 'Dashboard', 
-      path: 'Dashboard'
-    },
-    { 
-      icon: MessageSquare, 
-      label: 'Messages', 
-      path: 'Messages'
-    },
+    { icon: Home, label: 'Dashboard', path: 'Dashboard', colorKey: 'dashboard' },
+    { icon: MessageSquare, label: 'Messages', path: 'Messages', colorKey: 'messages' },
     { 
       icon: UserCircle, 
       label: 'Clients', 
       path: 'Clients',
+      colorKey: 'client',
       subItems: [
         { label: 'All Clients', icon: Users, path: 'Clients' },
         { label: 'Contractors', icon: Building, path: 'Clients/Contractors' },
@@ -113,12 +367,13 @@ export function SidebarEnhanced({
     },
     { 
       icon: Calendar, 
-      label: 'Appointments', 
+      label: 'Calendar', 
       path: 'Calendar',
+      colorKey: 'calendar',
       subItems: [
         { label: 'All Appointments', icon: Calendar, path: 'Calendar' },
         { label: 'On Site Visits', icon: MapPin, path: 'Calendar/SiteVisits' },
-        { label: 'Scheduled Jobs', icon: Clock, path: 'Calendar/ScheduledJobs' },
+        { label: 'Scheduled Jobs', icon: Clock3, path: 'Calendar/ScheduledJobs' },
         { label: 'Wood Delivery', icon: Truck, path: 'Calendar/WoodDelivery' },
         { label: 'Attachments', icon: Paperclip, path: 'Calendar/Attachments' }
       ]
@@ -127,6 +382,7 @@ export function SidebarEnhanced({
       icon: FileText, 
       label: 'Quotes', 
       path: 'Quotes',
+      colorKey: 'quotes',
       subItems: [
         { label: 'All Quotes', icon: FileText, path: 'Quotes' },
         { label: 'Quotes Draft', icon: FileMinus, path: 'Quotes/Draft' },
@@ -139,6 +395,7 @@ export function SidebarEnhanced({
       icon: FileSignature, 
       label: 'Contracts', 
       path: 'Contracts',
+      colorKey: 'contracts',
       subItems: [
         { label: 'All Contracts', icon: FileSignature, path: 'Contracts' },
         { label: 'Contracts Sent', icon: Send, path: 'Contracts/Sent' },
@@ -146,64 +403,50 @@ export function SidebarEnhanced({
       ]
     },
     { 
-      icon: Briefcase, 
-      label: 'Work Orders', 
-      path: 'WorkOrders'
-    },
-    { 
       icon: ClipboardList, 
       label: 'Jobs', 
       path: 'Jobs',
+      colorKey: 'jobs',
       subItems: [
         { label: 'All Jobs', icon: ClipboardList, path: 'Jobs' },
         { label: 'Ready To Start', icon: Play, path: 'Jobs/ReadyToStart' },
-        { label: 'Jobs In Progress', icon: Clock, path: 'Jobs/InProgress' },
+        { label: 'Jobs In Progress', icon: Clock3, path: 'Jobs/InProgress' },
         { label: 'Jobs Completed', icon: CheckCircle, path: 'Jobs/Completed' }
       ]
     },
+    { icon: Briefcase, label: 'Work Orders', path: 'WorkOrders', colorKey: 'workOrders' },
     { 
-      icon: Camera, 
-      label: 'Photos', 
-      path: 'Photos'
-    },
-    { 
-      icon: Clock, 
-      label: 'Timesheet', 
+      icon: Clock3, 
+      label: 'Time Sheet', 
       path: 'Time Sheet',
+      colorKey: 'timeSheet',
       subItems: userRole === 'admin' || userRole === 'manager' ? [
-        { label: 'Time Logs', icon: Clock, path: 'Time Sheet' },
+        { label: 'Time Logs', icon: Clock3, path: 'Time Sheet' },
         { label: 'Wage Rate', icon: DollarSign, path: 'Time Sheet/WageRate' },
         { label: 'General Tasks', icon: ClipboardList, path: 'Time Sheet/GeneralTasks' },
         { label: 'Weekly Report', icon: BarChart3, path: 'Time Sheet/WeeklyReport' },
         { label: 'Payroll', icon: DollarSign, path: 'Time Sheet/Payroll' }
-      ] : [
-        { label: 'Time Logs', icon: Clock, path: 'Time Sheet' }
-      ]
+      ] : undefined
     },
-    { 
-      icon: Package, 
-      label: 'Items', 
-      path: 'Items'
-    },
+    { icon: Camera, label: 'Photos', path: 'Photos', colorKey: 'photos' },
+    { icon: Package, label: 'Items', path: 'Items', colorKey: 'items' },
     { 
       icon: Building2, 
       label: 'Vendors', 
       path: 'Vendors',
+      colorKey: 'vendors',
       subItems: [
         { label: 'Vendor Company', icon: Building2, path: 'Vendors' },
         { label: 'Vendor Contacts', icon: Contact, path: 'Vendors/Contacts' },
         { label: 'Vendor Price List', icon: ListOrdered, path: 'Vendors/PriceList' }
       ]
     },
-    { 
-      icon: Star, 
-      label: 'Reviews', 
-      path: 'Reviews'
-    },
+    { icon: Star, label: 'Reviews', path: 'Reviews', colorKey: 'reviews' },
     { 
       icon: Settings, 
       label: 'Settings', 
       path: 'Settings',
+      colorKey: 'settings',
       subItems: userRole === 'admin' ? [
         { label: 'Employees', icon: Users, path: 'Settings/Employees' },
         { label: 'Departments', icon: Building, path: 'Settings/Departments' },
@@ -243,13 +486,14 @@ export function SidebarEnhanced({
 
   return (
     <aside style={{
-      width: '220px',
+      width: '160px',
       backgroundColor: bgColor,
       borderRight: `1px solid ${borderColor}`,
       display: 'flex',
       flexDirection: 'column',
-      padding: '100px 12px 24px 12px',
-      gap: '4px',
+      alignItems: 'stretch',
+      padding: '140px 12px 24px 12px',
+      gap: '8px',
       overflowY: 'auto',
       height: '100vh',
       position: 'fixed',
@@ -257,7 +501,7 @@ export function SidebarEnhanced({
       top: 0,
       zIndex: 1000
     }}>
-      {/* Keyframe animations */}
+      {/* Keyframe animations for bell pulsation */}
       <style>{`
         @keyframes bellPulsate {
           0%, 100% {
@@ -269,28 +513,18 @@ export function SidebarEnhanced({
             box-shadow: 0 4px 16px rgba(220, 53, 69, 0.6), 0 0 20px 8px rgba(220, 53, 69, 0.4);
           }
         }
-        .sidebar-item:hover {
-          background-color: ${hoverBg};
-        }
-        .sidebar-item.active {
-          background-color: ${activeBg};
-          border-left: 3px solid ${accentColor};
-        }
-        .sub-item:hover {
-          background-color: ${hoverBg};
-        }
       `}</style>
 
-      {/* Notification Bell */}
+      {/* Red Notification Bell - Above Utility Buttons */}
       <div style={{
         position: 'absolute',
-        top: '20px',
+        top: '42px',
         left: '50%',
         transform: 'translateX(-50%)'
       }}>
         <button style={{
-          width: '48px',
-          height: '48px',
+          width: '56px',
+          height: '56px',
           backgroundColor: '#DC3545',
           border: 'none',
           borderRadius: '50%',
@@ -300,59 +534,62 @@ export function SidebarEnhanced({
           cursor: 'pointer',
           position: 'relative',
           boxShadow: '0 4px 12px rgba(220, 53, 69, 0.4)',
-          animation: 'bellPulsate 2s ease-in-out infinite'
+          animation: hasAlerts ? 'bellPulsate 2s ease-in-out infinite' : 'none'
         }}>
-          <Bell style={{ width: '24px', height: '24px', color: '#FFFFFF' }} />
+          <Bell style={{ width: '28px', height: '28px', color: '#FFFFFF' }} />
+          {/* Notification Badge */}
           <div style={{
             position: 'absolute',
-            top: '4px',
-            right: '4px',
+            top: '6px',
+            right: '6px',
             backgroundColor: '#FFFFFF',
             color: '#DC3545',
             borderRadius: '50%',
-            width: '20px',
-            height: '20px',
+            width: '22px',
+            height: '22px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '10px',
+            fontSize: '11px',
             fontWeight: 'bold',
             border: '2px solid #DC3545'
           }}>
-            12
+            40
           </div>
         </button>
       </div>
 
-      {/* Top Icons Row */}
+      {/* Top Icons */}
       <div style={{
         display: 'flex',
-        gap: '8px',
-        paddingBottom: '16px',
-        marginBottom: '8px',
+        gap: '12px',
+        paddingBottom: '20px',
         borderBottom: `1px solid ${borderColor}`
       }}>
+        {/* Search Button */}
         <button style={{
           flex: 1,
-          height: '36px',
+          height: '40px',
           backgroundColor: darkMode ? '#3D3D3D' : '#F5F5F5',
           border: `1px solid ${borderColor}`,
-          borderRadius: '8px',
+          borderRadius: '10px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer'
         }}>
-          <Search style={{ width: '16px', height: '16px', color: textColor }} />
+          <Search style={{ width: '18px', height: '18px', color: darkMode ? '#FFFFFF' : '#1A1A1A' }} />
         </button>
+
+        {/* Dark Mode Toggle */}
         <button
           onClick={onToggleDarkMode}
           style={{
             flex: 1,
-            height: '36px',
+            height: '40px',
             backgroundColor: darkMode ? '#3D3D3D' : '#F5F5F5',
             border: `1px solid ${borderColor}`,
-            borderRadius: '8px',
+            borderRadius: '10px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -360,105 +597,54 @@ export function SidebarEnhanced({
           }}
         >
           {darkMode ? (
-            <Moon style={{ width: '16px', height: '16px', color: textColor }} />
+            <Moon style={{ width: '18px', height: '18px', color: '#FFFFFF' }} />
           ) : (
-            <Sun style={{ width: '16px', height: '16px', color: textColor }} />
+            <Sun style={{ width: '18px', height: '18px', color: '#1A1A1A' }} />
           )}
         </button>
       </div>
 
       {/* Menu Items */}
       {menuConfig.map((item, index) => {
-        const Icon = item.icon;
         const hasSubItems = item.subItems && item.subItems.length > 0;
         const isExpanded = expandedMenus.includes(item.label);
         const itemIsActive = isActive(item.path);
 
         return (
           <div key={index}>
-            {/* Main Menu Item */}
-            <button
-              className={`sidebar-item ${itemIsActive ? 'active' : ''}`}
+            {/* Main Menu Item - 3D Plastic Button */}
+            <PlasticButton
+              colorKey={item.colorKey}
+              icon={item.icon}
+              label={item.label}
+              isActive={itemIsActive && !hasSubItems}
               onClick={() => handleClick(item.path, item.label, !!hasSubItems)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '10px 12px',
-                backgroundColor: itemIsActive ? activeBg : 'transparent',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                borderLeft: itemIsActive ? `3px solid ${accentColor}` : '3px solid transparent'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Icon style={{ 
-                  width: '18px', 
-                  height: '18px', 
-                  color: itemIsActive ? accentColor : textMuted 
-                }} />
-                <span style={{ 
-                  fontSize: '13px', 
-                  fontWeight: itemIsActive ? '600' : '500',
-                  color: itemIsActive ? textColor : textMuted
-                }}>
-                  {item.label}
-                </span>
-              </div>
-              {hasSubItems && (
-                isExpanded 
-                  ? <ChevronDown style={{ width: '14px', height: '14px', color: textMuted }} />
-                  : <ChevronRight style={{ width: '14px', height: '14px', color: textMuted }} />
-              )}
-            </button>
+              hasDropdown={hasSubItems}
+              isExpanded={isExpanded}
+            />
 
             {/* Sub Menu Items */}
             {hasSubItems && isExpanded && (
               <div style={{
-                marginLeft: '20px',
                 marginTop: '4px',
+                marginLeft: '8px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '2px'
+                gap: '4px'
               }}>
                 {item.subItems!.map((subItem, subIndex) => {
-                  const SubIcon = subItem.icon;
                   const subIsActive = activeItem === subItem.path;
                   
                   return (
-                    <button
+                    <PlasticButton
                       key={subIndex}
-                      className="sub-item"
+                      colorKey="subItem"
+                      icon={subItem.icon}
+                      label={subItem.label}
+                      isActive={subIsActive}
                       onClick={() => handleSubItemClick(subItem.path)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 10px',
-                        backgroundColor: subIsActive ? activeBg : 'transparent',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        borderLeft: subIsActive ? `2px solid ${accentColor}` : '2px solid transparent'
-                      }}
-                    >
-                      <SubIcon style={{ 
-                        width: '14px', 
-                        height: '14px', 
-                        color: subIsActive ? accentColor : textMuted 
-                      }} />
-                      <span style={{ 
-                        fontSize: '12px', 
-                        fontWeight: subIsActive ? '600' : '400',
-                        color: subIsActive ? textColor : textMuted
-                      }}>
-                        {subItem.label}
-                      </span>
-                    </button>
+                      size="small"
+                    />
                   );
                 })}
               </div>
