@@ -47,7 +47,10 @@ import {
   Receipt,
   Building,
   Contact,
-  ListOrdered
+  ListOrdered,
+  UserCog,
+  HardHat,
+  LayoutDashboard
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
@@ -577,12 +580,17 @@ export function SidebarEnhanced({
       label: 'Settings', 
       path: 'Settings',
       colorKey: 'settings',
-      subItems: userRole === 'admin' ? [
-        { label: 'Employees', icon: Users, path: 'Settings/Employees' },
-        { label: 'Departments', icon: Building, path: 'Settings/Departments' },
-        { label: 'Roles & Permissions', icon: Shield, path: 'Settings/Roles' },
-        { label: 'Taxes', icon: Receipt, path: 'Settings/Taxes' }
-      ] : undefined
+      subItems: [
+        { label: 'Admin Dashboard', icon: LayoutDashboard, path: 'Mode/Admin' },
+        { label: 'Employee Portal', icon: HardHat, path: 'Mode/Employee' },
+        { label: 'Customer Portal', icon: UserCog, path: 'Mode/Customer' },
+        ...(userRole === 'admin' ? [
+          { label: 'Employees', icon: Users, path: 'Settings/Employees' },
+          { label: 'Departments', icon: Building, path: 'Settings/Departments' },
+          { label: 'Roles & Permissions', icon: Shield, path: 'Settings/Roles' },
+          { label: 'Taxes', icon: Receipt, path: 'Settings/Taxes' }
+        ] : [])
+      ]
     }
   ];
 
@@ -616,132 +624,24 @@ export function SidebarEnhanced({
 
   return (
     <aside style={{
-      width: '160px',
+      width: '200px',
+      minWidth: '200px',
       backgroundColor: bgColor,
       borderRight: `1px solid ${borderColor}`,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'stretch',
-      padding: '140px 12px 24px 12px',
+      padding: '24px 16px 24px 16px',
       gap: '8px',
       overflowY: 'auto',
+      overflowX: 'hidden',
       height: '100vh',
       position: 'fixed',
       left: 0,
       top: 0,
-      zIndex: 1000
+      zIndex: 1000,
+      boxSizing: 'border-box'
     }}>
-      {/* Keyframe animations for bell pulsation */}
-      <style>{`
-        @keyframes bellPulsate {
-          0%, 100% {
-            transform: scale(1);
-            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4), 0 0 0 0 rgba(220, 53, 69, 0.7);
-          }
-          50% {
-            transform: scale(1.05);
-            box-shadow: 0 4px 16px rgba(220, 53, 69, 0.6), 0 0 20px 8px rgba(220, 53, 69, 0.4);
-          }
-        }
-      `}</style>
-
-      {/* Red Notification Bell - Above Utility Buttons */}
-      <div style={{
-        position: 'absolute',
-        top: '42px',
-        left: '50%',
-        transform: 'translateX(-50%)'
-      }}>
-        <TooltipPortal content="40 Notifications" position="right">
-          <button 
-            style={{
-              width: '56px',
-              height: '56px',
-              backgroundColor: '#DC3545',
-              border: 'none',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              position: 'relative',
-              boxShadow: '0 4px 12px rgba(220, 53, 69, 0.4)',
-              animation: hasAlerts ? 'bellPulsate 2s ease-in-out infinite' : 'none'
-            }}>
-          <Bell style={{ width: '28px', height: '28px', color: '#FFFFFF' }} />
-          {/* Notification Badge */}
-          <div style={{
-            position: 'absolute',
-            top: '6px',
-            right: '6px',
-            backgroundColor: '#FFFFFF',
-            color: '#DC3545',
-            borderRadius: '50%',
-            width: '22px',
-            height: '22px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '11px',
-            fontWeight: 'bold',
-            border: '2px solid #DC3545'
-          }}>
-            40
-          </div>
-        </button>
-        </TooltipPortal>
-      </div>
-
-      {/* Top Icons */}
-      <div style={{
-        display: 'flex',
-        gap: '12px',
-        paddingBottom: '20px',
-        borderBottom: `1px solid ${borderColor}`
-      }}>
-        {/* Search Button */}
-        <TooltipPortal content="Search" position="bottom">
-          <button 
-            style={{
-              flex: 1,
-              height: '40px',
-              backgroundColor: darkMode ? '#3D3D3D' : '#F5F5F5',
-              border: `1px solid ${borderColor}`,
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }}>
-            <Search style={{ width: '18px', height: '18px', color: darkMode ? '#FFFFFF' : '#1A1A1A' }} />
-          </button>
-        </TooltipPortal>
-
-        {/* Dark Mode Toggle */}
-        <TooltipPortal content={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"} position="bottom">
-          <button
-            onClick={onToggleDarkMode}
-            style={{
-              flex: 1,
-              height: '40px',
-              backgroundColor: darkMode ? '#3D3D3D' : '#F5F5F5',
-              border: `1px solid ${borderColor}`,
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }}
-          >
-            {darkMode ? (
-              <Moon style={{ width: '18px', height: '18px', color: '#FFFFFF' }} />
-            ) : (
-              <Sun style={{ width: '18px', height: '18px', color: '#1A1A1A' }} />
-            )}
-          </button>
-        </TooltipPortal>
-      </div>
-
       {/* Menu Items */}
       {menuConfig.map((item, index) => {
         const hasSubItems = item.subItems && item.subItems.length > 0;

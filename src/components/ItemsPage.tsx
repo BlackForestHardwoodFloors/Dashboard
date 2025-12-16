@@ -53,7 +53,7 @@ export default function ItemsPage({ onNavigate }: { onNavigate?: (page: string) 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: bgColor }}>
       <SidebarEnhanced activePage="Items" darkMode={darkMode} onNavigate={onNavigate} onToggleDarkMode={() => setDarkMode(!darkMode)} />
-      <div style={{ marginLeft: '220px', flex: 1, padding: '24px' }}>
+      <div style={{ marginLeft: '200px', flex: 1, padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div>
             <h1 style={{ fontSize: '28px', color: textColor, margin: '0 0 8px 0' }}>Items & Inventory</h1>

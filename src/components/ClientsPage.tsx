@@ -1483,7 +1483,7 @@ export default function ClientsPage({ onNavigate }: { onNavigate?: (page: string
       <div style={{ 
         flex: 1, 
         display: 'flex',
-        marginLeft: '160px', 
+        marginLeft: '200px', 
         backgroundColor: '#262626',
         overflow: 'auto'
       }}>

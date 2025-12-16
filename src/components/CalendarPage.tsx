@@ -284,7 +284,7 @@ export default function CalendarPage({ onNavigate }: { onNavigate?: (page: strin
       {/* Main Content */}
       <div style={{
         flex: 1,
-        marginLeft: isMobile ? '0' : '220px',
+        marginLeft: isMobile ? '0' : '160px',
         backgroundColor: '#0D0D0D',
         display: 'flex',
         flexDirection: 'column',

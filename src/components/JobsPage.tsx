@@ -203,7 +203,7 @@ export default function JobsPage({ onNavigate }: JobsPageProps) {
       />
 
       {/* Main Content */}
-      <div style={{ marginLeft: '220px', flex: 1, padding: '24px' }}>
+      <div style={{ marginLeft: '200px', flex: 1, padding: '24px' }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
           <div>

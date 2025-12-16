@@ -64,7 +64,7 @@ export default function SettingsPage({ onNavigate }: { onNavigate?: (page: strin
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: bgColor }}>
       <SidebarEnhanced activePage="Settings" darkMode={darkMode} onNavigate={onNavigate} onToggleDarkMode={() => setDarkMode(!darkMode)} />
-      <div style={{ marginLeft: '220px', flex: 1, padding: '24px' }}>
+      <div style={{ marginLeft: '200px', flex: 1, padding: '24px' }}>
         <div style={{ marginBottom: '24px' }}>
           <h1 style={{ fontSize: '28px', color: textColor, margin: '0 0 8px 0' }}>Settings</h1>
           <p style={{ fontSize: '14px', color: textMuted, margin: 0 }}>Manage your company settings and configurations</p>

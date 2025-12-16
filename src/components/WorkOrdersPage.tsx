@@ -41,7 +41,7 @@ export default function WorkOrdersPage({ onNavigate }: { onNavigate?: (page: str
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: bgColor }}>
       <SidebarEnhanced activePage="WorkOrders" darkMode={darkMode} onNavigate={onNavigate} onToggleDarkMode={() => setDarkMode(!darkMode)} />
-      <div style={{ marginLeft: '220px', flex: 1, padding: '24px' }}>
+      <div style={{ marginLeft: '200px', flex: 1, padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div>
             <h1 style={{ fontSize: '28px', color: textColor, margin: '0 0 8px 0' }}>Work Orders</h1>

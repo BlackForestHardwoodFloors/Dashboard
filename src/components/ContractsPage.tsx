@@ -82,7 +82,7 @@ export default function ContractsPage({ onNavigate }: ContractsPageProps) {
         onToggleDarkMode={() => setDarkMode(!darkMode)}
       />
 
-      <div style={{ marginLeft: '220px', flex: 1, padding: '24px' }}>
+      <div style={{ marginLeft: '200px', flex: 1, padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
           <div>
             <h1 style={{ fontSize: '28px', color: textColor, margin: '0 0 8px 0' }}>Contracts</h1>

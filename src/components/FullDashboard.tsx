@@ -188,7 +188,7 @@ export function FullDashboard({ onNavigate }: { onNavigate?: (page: string) => v
       <main style={{ 
         flex: 1, 
         overflowY: 'auto', 
-        marginLeft: isMobile ? '0' : '220px',
+        marginLeft: isMobile ? '0' : '180px',
         width: isMobile ? '100%' : 'auto'
       }}>
         {/* Mobile Header with Menu Button */}
@@ -233,6 +233,20 @@ export function FullDashboard({ onNavigate }: { onNavigate?: (page: string) => v
         )}
 
         <div style={{ padding: isMobile ? '16px' : '32px' }}>
+          {/* Keyframe animation for bell */}
+          <style>{`
+            @keyframes bellPulsate {
+              0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+              }
+              50% {
+                transform: scale(1.05);
+                box-shadow: 0 4px 16px rgba(220, 53, 69, 0.6), 0 0 20px 8px rgba(220, 53, 69, 0.3);
+              }
+            }
+          `}</style>
+
           {/* Header - Desktop Only */}
           {!isMobile && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
@@ -243,6 +257,91 @@ export function FullDashboard({ onNavigate }: { onNavigate?: (page: string) => v
                 <p style={{ fontSize: '14px', color: textMuted, margin: 0 }}>
                   Admin Portal • Saturday, November 15, 2025
                 </p>
+              </div>
+              
+              {/* Right side - Search, Dark Mode, Bell */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {/* Search Button */}
+                <button
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    backgroundColor: cardBg,
+                    border: `1px solid ${borderColor}`,
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  title="Search"
+                >
+                  <Search style={{ width: '20px', height: '20px', color: textMuted }} />
+                </button>
+
+                {/* Dark Mode Toggle */}
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    backgroundColor: cardBg,
+                    border: `1px solid ${borderColor}`,
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                >
+                  {darkMode ? (
+                    <Moon style={{ width: '20px', height: '20px', color: textMuted }} />
+                  ) : (
+                    <Sun style={{ width: '20px', height: '20px', color: textMuted }} />
+                  )}
+                </button>
+
+                {/* Notification Bell */}
+                <button
+                  style={{
+                    width: '52px',
+                    height: '52px',
+                    backgroundColor: '#DC3545',
+                    border: 'none',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    boxShadow: '0 4px 12px rgba(220, 53, 69, 0.4)',
+                    animation: 'bellPulsate 2s ease-in-out infinite'
+                  }}
+                  title="40 Notifications"
+                >
+                  <Bell style={{ width: '24px', height: '24px', color: '#FFFFFF' }} />
+                  <div style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: '4px',
+                    backgroundColor: '#FFFFFF',
+                    color: '#DC3545',
+                    borderRadius: '50%',
+                    width: '20px',
+                    height: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    border: '2px solid #DC3545'
+                  }}>
+                    40
+                  </div>
+                </button>
               </div>
             </div>
           )}

@@ -791,7 +791,7 @@ export default function TimeLogsPage({
         flex: 1, 
         display: 'flex', 
         flexDirection: 'column', 
-        marginLeft: isMobile ? '0' : '220px', 
+        marginLeft: isMobile ? '0' : '160px', 
         backgroundColor: '#262626', 
         minWidth: 0, 
         minHeight: 0,

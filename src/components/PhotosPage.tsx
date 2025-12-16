@@ -782,7 +782,7 @@ export default function PhotosPage({ onNavigate }: { onNavigate?: (page: string)
       {/* Main Content */}
       <div style={{ 
         flex: 1, 
-        marginLeft: isMobile ? '0' : '220px',
+        marginLeft: isMobile ? '0' : '160px',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden'

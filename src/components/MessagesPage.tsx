@@ -139,7 +139,7 @@ export default function MessagesPage({ onNavigate }: MessagesPageProps) {
       />
 
       {/* Main Content */}
-      <div style={{ marginLeft: '220px', flex: 1, padding: '24px' }}>
+      <div style={{ marginLeft: '200px', flex: 1, padding: '24px' }}>
         {/* Header */}
         <div style={{ marginBottom: '24px' }}>
           <h1 style={{ fontSize: '28px', color: textColor, margin: '0 0 8px 0' }}>
