@@ -492,25 +492,12 @@ export function SidebarEnhanced({
       path: 'Clients',
       colorKey: 'client',
       subItems: [
-        { label: 'All Clients', icon: Users, path: 'Clients' },
         { label: 'Contractors', icon: Building, path: 'Clients/Contractors' },
         { label: 'Locations', icon: MapPin, path: 'Clients/Locations' },
         { label: 'Company', icon: Building2, path: 'Clients/Company' }
       ]
     },
-    { 
-      icon: Calendar, 
-      label: 'Calendar', 
-      path: 'Calendar',
-      colorKey: 'calendar',
-      subItems: [
-        { label: 'All Appointments', icon: Calendar, path: 'Calendar' },
-        { label: 'On Site Visits', icon: MapPin, path: 'Calendar/SiteVisits' },
-        { label: 'Scheduled Jobs', icon: Clock3, path: 'Calendar/ScheduledJobs' },
-        { label: 'Wood Delivery', icon: Truck, path: 'Calendar/WoodDelivery' },
-        { label: 'Attachments', icon: Paperclip, path: 'Calendar/Attachments' }
-      ]
-    },
+    { icon: Calendar, label: 'Calendar', path: 'Calendar', colorKey: 'calendar' },
     { 
       icon: FileText, 
       label: 'Quotes', 
@@ -605,6 +592,11 @@ export function SidebarEnhanced({
   const handleClick = (path: string, label: string, hasSubItems: boolean) => {
     if (hasSubItems) {
       toggleExpand(label);
+      // Also navigate to the main page when clicking on items with submenus
+      setActiveItem(path);
+      if (onNavigate) {
+        onNavigate(path);
+      }
     } else {
       setActiveItem(path);
       if (onNavigate) {

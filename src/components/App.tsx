@@ -9,7 +9,7 @@ import MessagesPage from './components/MessagesPage';
 import QuotesPage from './components/QuotesPage';
 import ContractsPage from './components/ContractsPage';
 import JobsPage from './components/JobsPage';
-import JobCardDrawer from './components/JobCardDrawer';
+import { JobCard } from './components/JobCard';
 import WorkOrdersPage from './components/WorkOrdersPage';
 import ItemsPage from './components/ItemsPage';
 import VendorsPage from './components/VendorsPage';
@@ -61,7 +61,6 @@ function AppContent() {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [loginPage, setLoginPage] = useState<LoginPageType>(null);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
-  const [showJobDrawer, setShowJobDrawer] = useState(false);
 
   // Detect which login page to show based on URL
   useEffect(() => {
@@ -155,16 +154,9 @@ function AppContent() {
       const jobId = parseInt(page.split('/')[1]);
       if (!isNaN(jobId)) {
         setSelectedJobId(jobId);
-        setShowJobDrawer(true);
+        setCurrentView('job-card');
         return;
       }
-    }
-    
-    // Handle ClientIntake navigation (e.g., "ClientIntake/123")
-    if (page.startsWith('ClientIntake/')) {
-      // Navigate to Clients page - the intake form can be opened there
-      setCurrentView('clients');
-      return;
     }
 
     const pageMap: Record<string, ViewType> = {
@@ -251,6 +243,8 @@ function AppContent() {
         return <WorkOrdersPage onNavigate={handleNavigate} />;
       case 'jobs':
         return <JobsPage onNavigate={handleNavigate} />;
+      case 'job-card':
+        return <JobCard jobId={selectedJobId} onNavigate={handleNavigate} onBack={() => setCurrentView('jobs')} />;
       case 'photos':
         return <PhotosPage onNavigate={handleNavigate} />;
       case 'time-sheet':
@@ -349,22 +343,6 @@ function AppContent() {
       ) : (
         renderAdminContent()
       )}
-      
-      {/* Job Card Drawer - shown when clicking calendar appointments */}
-      <JobCardDrawer
-        isOpen={showJobDrawer}
-        appointmentId={selectedJobId}
-        onClose={() => {
-          setShowJobDrawer(false);
-          setSelectedJobId(null);
-        }}
-        onNavigate={handleNavigate}
-        onDataUpdate={() => {
-          // Trigger a re-render by briefly changing view and back
-          // This will refresh the calendar data
-          window.dispatchEvent(new CustomEvent('appointmentUpdated'));
-        }}
-      />
     </main>
   );
 }

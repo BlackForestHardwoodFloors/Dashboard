@@ -1352,7 +1352,7 @@ export default function ClientsPage({ onNavigate }: { onNavigate?: (page: string
   const [filterType, setFilterType] = useState<'All' | ClientType>('All');
   const [showAddContactModal, setShowAddContactModal] = useState(false);
   const [showAddPropertyModal, setShowAddPropertyModal] = useState(false);
-  const [showNewClientModal, setShowNewClientModal] = useState(true);
+  const [showNewClientModal, setShowNewClientModal] = useState(false);
   
   // New filters for Quote/Contract/Job/Work Order
   const [filterHasQuote, setFilterHasQuote] = useState(false);

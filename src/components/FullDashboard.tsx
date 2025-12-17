@@ -2,12 +2,26 @@ import { useState, useRef, useEffect } from 'react';
 import { 
   Moon, Sun,
   ChevronLeft, ChevronRight, MapPin, DollarSign,
-  TrendingUp, Users, Bell, Search, Star, Menu, X
+  TrendingUp, Users, Bell, Search, Star, Menu, X, LogOut
 } from 'lucide-react';
 import { Button } from './Button';
 import { SidebarEnhanced } from './SidebarEnhanced';
 
-export function FullDashboard({ onNavigate }: { onNavigate?: (page: string) => void }) {
+interface User {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+}
+
+interface FullDashboardProps {
+  onNavigate?: (page: string) => void;
+  onLogout?: () => void;
+  user?: User | null;
+}
+
+export function FullDashboard({ onNavigate, onLogout, user }: FullDashboardProps) {
   const [darkMode, setDarkMode] = useState(true);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [showConversionModal, setShowConversionModal] = useState(false);
@@ -341,6 +355,26 @@ export function FullDashboard({ onNavigate }: { onNavigate?: (page: string) => v
                   }}>
                     40
                   </div>
+                </button>
+
+                {/* Logout Button */}
+                <button
+                  onClick={onLogout}
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    backgroundColor: cardBg,
+                    border: `1px solid ${borderColor}`,
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  title="Log Out"
+                >
+                  <LogOut style={{ width: '20px', height: '20px', color: textMuted }} />
                 </button>
               </div>
             </div>

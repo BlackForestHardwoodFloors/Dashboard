@@ -18,9 +18,12 @@ import {
 interface BoardroomNewClientModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onNavigate?: (page: string, clientData?: any) => void;
 }
 
-export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNewClientModalProps) {
+export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }: BoardroomNewClientModalProps) {
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  
   // Section 1: Client Type & Account Info
   const [clientType, setClientType] = useState<'Homeowner' | 'Contractor' | 'Designer' | 'Property Manager' | 'Other'>('Homeowner');
   const [firstName, setFirstName] = useState('');
@@ -37,16 +40,32 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
   const [phoneNumbers, setPhoneNumbers] = useState<Array<{ number: string; type: string; name?: string }>>([{ number: '', type: 'Mobile', name: '' }]);
   const [emailAddresses, setEmailAddresses] = useState<Array<{ email: string; name?: string }>>([{ email: '', name: '' }]);
   const [role, setRole] = useState('Owner');
-  const [preferredContactMethod, setPreferredContactMethod] = useState('Phone');
+  
+  // Preferred Contact Method - Toggle sliders
+  const [preferPhone, setPreferPhone] = useState(true);
+  const [preferEmail, setPreferEmail] = useState(false);
+  const [preferText, setPreferText] = useState(false);
+  
   const [isPrimaryContact, setIsPrimaryContact] = useState(true);
   const [grantPortalAccess, setGrantPortalAccess] = useState(false);
   const [receiveSMS, setReceiveSMS] = useState(false);
   const [receiveEmail, setReceiveEmail] = useState(true);
 
   // Section 3: Project / Work Information
-  const [typeOfWork, setTypeOfWork] = useState('');
+  const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([]);
+  const [availableWorkTypes, setAvailableWorkTypes] = useState<string[]>([
+    'Installation',
+    'Repairs', 
+    'Sand and Finish',
+    'Buff and Recoat'
+  ]);
+  const [customWorkTypeInput, setCustomWorkTypeInput] = useState('');
   const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
-  const [projectNotes, setProjectNotes] = useState('');
+  
+  // Notes - Internal and Client-shareable
+  const [internalNotes, setInternalNotes] = useState('');
+  const [clientNotes, setClientNotes] = useState('');
+  const [shareNotesWithClient, setShareNotesWithClient] = useState(false);
 
   // Section 4: Primary Property / Jobsite
   const [propertyNickname, setPropertyNickname] = useState('');
@@ -56,7 +75,132 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
   const [zip, setZip] = useState('');
   const [region, setRegion] = useState('');
   const [billingAddressSame, setBillingAddressSame] = useState(true);
+  const [billingStreetAddress, setBillingStreetAddress] = useState('');
+  const [billingCity, setBillingCity] = useState('');
+  const [billingState, setBillingState] = useState('');
+  const [billingZip, setBillingZip] = useState('');
   const [propertyNotes, setPropertyNotes] = useState('');
+  
+  // Zip code to region mapping
+  const zipToRegion: Record<string, string> = {
+    '99201': 'Central',
+    '99202': 'Central',
+    '99203': 'South',
+    '99204': 'South West',
+    '99205': 'North West',
+    '99206': 'South East',
+    '99207': 'North East',
+    '99208': 'North',
+    '99212': 'North East',
+    '99216': 'South East',
+    '99217': 'North East',
+    '99218': 'North',
+    '99223': 'South',
+    '99224': 'South West',
+    '99016': 'Spokane Valley',
+    '99027': 'Spokane Valley',
+    '99037': 'Spokane Valley',
+    '99001': 'Airway Heights',
+    '99003': 'Chattaroy',
+    '99004': 'Cheney',
+    '99005': 'Colbert',
+    '99006': 'Deer Park',
+    '99009': 'Elk',
+    '99011': 'Fairchild AFB',
+    '99012': 'Fairfield',
+    '99014': 'Four Lakes',
+    '99018': 'Latah',
+    '99019': 'Liberty Lake',
+    '99020': 'Marshall',
+    '99021': 'Mead',
+    '99022': 'Medical Lake',
+    '99023': 'Mica',
+    '99025': 'Newman Lake',
+    '99026': 'Nine Mile Falls',
+    '99030': 'Rockford',
+    '99031': 'Spangle',
+    '99036': 'Valleyford',
+    '99039': 'Waverly',
+    '83814': 'Coeur d\'Alene, ID',
+    '83815': 'Coeur d\'Alene, ID',
+    '83854': 'Post Falls, ID',
+    '83858': 'Rathdrum, ID'
+  };
+
+  // Get unique regions for dropdown
+  const availableRegions = [...new Set(Object.values(zipToRegion))].sort();
+
+  // Auto-fill region when zip code changes
+  const handleZipChange = (newZip: string) => {
+    setZip(newZip);
+    const cleanZip = newZip.trim();
+    if (zipToRegion[cleanZip]) {
+      setRegion(zipToRegion[cleanZip]);
+    }
+  };
+  
+  // Saving state
+  const [saving, setSaving] = useState(false);
+
+  // Auto-generate display name based on client type
+  const generateDisplayName = () => {
+    if (clientType === 'Contractor' || clientType === 'Designer' || clientType === 'Property Manager') {
+      // For business types, could use company name if available, otherwise last name first
+      return lastName ? `${lastName}${firstName ? ', ' + firstName : ''}` : firstName;
+    } else {
+      // For homeowners: "Last, First" or "Last, First & Second"
+      if (lastName) {
+        let name = lastName;
+        if (firstName) {
+          name += `, ${firstName}`;
+          if (secondHomeowner) {
+            name += ` & ${secondHomeowner}`;
+          }
+        }
+        return name;
+      }
+      return firstName || '';
+    }
+  };
+
+  // Auto-sync Primary Contact name with Client Account Info (always sync)
+  React.useEffect(() => {
+    setContactFirstName(firstName);
+  }, [firstName]);
+
+  React.useEffect(() => {
+    setContactLastName(lastName);
+  }, [lastName]);
+
+  // Update display name when relevant fields change
+  React.useEffect(() => {
+    const autoName = generateDisplayName();
+    if (autoName) {
+      setDisplayName(autoName);
+    }
+  }, [firstName, lastName, secondHomeowner, clientType]);
+
+  // Toggle work type selection
+  const toggleWorkType = (workType: string) => {
+    if (selectedWorkTypes.includes(workType)) {
+      setSelectedWorkTypes(selectedWorkTypes.filter(t => t !== workType));
+    } else {
+      setSelectedWorkTypes([...selectedWorkTypes, workType]);
+    }
+  };
+
+  // Add custom work type
+  const addCustomWorkType = () => {
+    const trimmed = customWorkTypeInput.trim();
+    if (trimmed && !availableWorkTypes.includes(trimmed)) {
+      setAvailableWorkTypes([...availableWorkTypes, trimmed]);
+      setSelectedWorkTypes([...selectedWorkTypes, trimmed]);
+      setCustomWorkTypeInput('');
+    } else if (trimmed && !selectedWorkTypes.includes(trimmed)) {
+      setSelectedWorkTypes([...selectedWorkTypes, trimmed]);
+      setCustomWorkTypeInput('');
+    }
+  };
 
   const roomOptions = [
     'Entry',
@@ -123,6 +267,213 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
     if (e.key === 'Enter') {
       e.preventDefault();
       addCustomTag();
+    }
+  };
+
+  // Build client data object matching Contact model
+  const buildClientData = () => {
+    return {
+      // Required fields
+      firstName: firstName || contactFirstName,
+      phone: phoneNumbers[0]?.number || '',
+      operationsManager: 2, // Default to Admin User
+      createdBy: 'Admin',
+      modifiedBy: 'Admin',
+      
+      // Optional fields
+      lastName: lastName || contactLastName || '',
+      email: emailAddresses[0]?.email || '',
+      companyName: clientType === 'Contractor' ? displayName : '',
+      additionalPhone: phoneNumbers[1]?.number || '',
+      message: internalNotes || '',
+      clientSource: clientType === 'Contractor' ? 'Contractor' : 'Direct',
+      clientDetailsAvailability: 'Yes',
+      doNotSendEmail: !receiveEmail,
+      
+      // Extra data for future use (stored in message or separate table)
+      // These won't cause errors but may not be saved unless backend supports them
+      displayName: displayName || generateDisplayName(),
+      clientType,
+      secondHomeowner,
+      status,
+      leadSource,
+      tags,
+      preferPhone,
+      preferEmail,
+      preferText,
+      workTypes: selectedWorkTypes,
+      rooms: selectedRooms,
+      clientNotes: shareNotesWithClient ? clientNotes : '',
+      propertyNickname,
+      address: streetAddress,
+      city,
+      state,
+      zipCode: zip,
+      region,
+      billingAddressSame,
+      billingStreetAddress: billingAddressSame ? streetAddress : billingStreetAddress,
+      billingCity: billingAddressSame ? city : billingCity,
+      billingState: billingAddressSame ? state : billingState,
+      billingZip: billingAddressSame ? zip : billingZip,
+      propertyNotes
+    };
+  };
+
+  // Save client to database
+  const saveClient = async () => {
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const clientData = buildClientData();
+      
+      console.log('Sending client data:', clientData);
+      
+      // Step 1: Create the contact
+      const response = await fetch(`${API_URL}/contact/create-contact`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(clientData)
+      });
+      
+      const data = await response.json();
+      console.log('API Response:', response.status, data);
+      
+      if (response.ok) {
+        const contactId = data.data?.id || data.id;
+        
+        // Step 2: Save additional phone numbers
+        const validPhones = phoneNumbers.filter(p => p.number && p.number.trim());
+        if (validPhones.length > 0 && contactId) {
+          try {
+            await fetch(`${API_URL}/contact-phone/create-bulk`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                contactId,
+                phones: validPhones.map((p, index) => ({
+                  name: p.name || null,
+                  number: p.number,
+                  type: p.type || 'Mobile',
+                  isPrimary: index === 0,
+                  receiveSMS: true
+                }))
+              })
+            });
+            console.log('Phone numbers saved');
+          } catch (phoneError) {
+            console.warn('Could not save additional phones:', phoneError);
+          }
+        }
+        
+        // Step 3: Save additional email addresses
+        const validEmails = emailAddresses.filter(e => e.email && e.email.trim());
+        if (validEmails.length > 0 && contactId) {
+          try {
+            await fetch(`${API_URL}/contact-email/create-bulk`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                contactId,
+                emails: validEmails.map((e, index) => ({
+                  name: e.name || null,
+                  email: e.email,
+                  isPrimary: index === 0,
+                  receiveNotifications: true
+                }))
+              })
+            });
+            console.log('Email addresses saved');
+          } catch (emailError) {
+            console.warn('Could not save additional emails:', emailError);
+          }
+        }
+        
+        return { success: true, client: data, contactId };
+      } else {
+        console.error('Failed to save client:', data);
+        alert(`Error: ${data.message || data.error || 'Failed to save client'}`);
+        return { success: false };
+      }
+    } catch (error) {
+      console.error('Error saving client:', error);
+      alert('Network error - please try again');
+      return { success: false };
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle Save Client button
+  const handleSaveClient = async () => {
+    // Validation
+    const clientFirstName = firstName || contactFirstName;
+    const clientPhone = phoneNumbers[0]?.number || '';
+    
+    if (!clientFirstName.trim()) {
+      alert('Please enter a First Name');
+      return;
+    }
+    if (!clientPhone.trim()) {
+      alert('Please enter a Phone Number');
+      return;
+    }
+    
+    const result = await saveClient();
+    if (result.success) {
+      onClose();
+    }
+  };
+
+  // Handle Save & Create Quote button
+  const handleSaveAndCreateQuote = async () => {
+    // Validation
+    const clientFirstName = firstName || contactFirstName;
+    const clientPhone = phoneNumbers[0]?.number || '';
+    
+    if (!clientFirstName.trim()) {
+      alert('Please enter a First Name');
+      return;
+    }
+    if (!clientPhone.trim()) {
+      alert('Please enter a Phone Number');
+      return;
+    }
+    
+    const result = await saveClient();
+    if (result.success && onNavigate) {
+      onClose();
+      onNavigate('Quotes', buildClientData());
+    }
+  };
+
+  // Handle Save & Schedule Visit button
+  const handleSaveAndScheduleVisit = async () => {
+    // Validation
+    const clientFirstName = firstName || contactFirstName;
+    const clientPhone = phoneNumbers[0]?.number || '';
+    
+    if (!clientFirstName.trim()) {
+      alert('Please enter a First Name');
+      return;
+    }
+    if (!clientPhone.trim()) {
+      alert('Please enter a Phone Number');
+      return;
+    }
+    
+    const result = await saveClient();
+    if (result.success && onNavigate) {
+      onClose();
+      onNavigate('Calendar', buildClientData());
     }
   };
 
@@ -1134,56 +1485,136 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
               </div>
             </div>
 
-            {/* Preferred Contact Method */}
+            {/* Preferred Contact Method - Toggle Sliders */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{
                 display: 'block',
                 color: '#A5A5A5',
                 fontSize: '13px',
                 fontWeight: '500',
-                marginBottom: '8px'
+                marginBottom: '12px'
               }}>
                 Preferred Contact Method <span style={{ color: '#C9A049' }}>*</span>
               </label>
-              <div style={{ position: 'relative' }}>
-                <select
-                  value={preferredContactMethod}
-                  onChange={(e) => setPreferredContactMethod(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '11px 36px 11px 14px',
-                    backgroundColor: '#2C2D2E',
-                    border: '1px solid #3A3A3B',
-                    borderRadius: '10px',
-                    color: '#FFFFFF',
-                    fontSize: '14px',
-                    outline: 'none',
+              <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                {/* Phone Toggle */}
+                <div 
+                  onClick={() => setPreferPhone(!preferPhone)}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '12px',
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease-in-out',
-                    appearance: 'none'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#5EB77D';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#3A3A3B';
+                    padding: '10px 16px',
+                    backgroundColor: preferPhone ? 'rgba(94, 183, 125, 0.15)' : '#2C2D2E',
+                    border: `2px solid ${preferPhone ? '#5EB77D' : '#3A3A3B'}`,
+                    borderRadius: '10px',
+                    transition: 'all 0.15s ease-in-out'
                   }}
                 >
-                  <option value="Phone">Phone</option>
-                  <option value="Email">Email</option>
-                  <option value="SMS">SMS</option>
-                </select>
-                <ChevronDown 
-                  size={16} 
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    pointerEvents: 'none',
-                    color: '#7A7A7A'
+                  <Phone size={18} color={preferPhone ? '#5EB77D' : '#7A7A7A'} />
+                  <span style={{ color: preferPhone ? '#FFFFFF' : '#A5A5A5', fontSize: '14px', fontWeight: '500' }}>Phone</span>
+                  <div style={{
+                    width: '44px',
+                    height: '24px',
+                    backgroundColor: preferPhone ? '#5EB77D' : '#3A3A3B',
+                    borderRadius: '12px',
+                    position: 'relative',
+                    transition: 'all 0.2s ease-in-out'
+                  }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '50%',
+                      position: 'absolute',
+                      top: '2px',
+                      left: preferPhone ? '22px' : '2px',
+                      transition: 'all 0.2s ease-in-out',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }} />
+                  </div>
+                </div>
+
+                {/* Email Toggle */}
+                <div 
+                  onClick={() => setPreferEmail(!preferEmail)}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '12px',
+                    cursor: 'pointer',
+                    padding: '10px 16px',
+                    backgroundColor: preferEmail ? 'rgba(94, 183, 125, 0.15)' : '#2C2D2E',
+                    border: `2px solid ${preferEmail ? '#5EB77D' : '#3A3A3B'}`,
+                    borderRadius: '10px',
+                    transition: 'all 0.15s ease-in-out'
                   }}
-                />
+                >
+                  <Mail size={18} color={preferEmail ? '#5EB77D' : '#7A7A7A'} />
+                  <span style={{ color: preferEmail ? '#FFFFFF' : '#A5A5A5', fontSize: '14px', fontWeight: '500' }}>Email</span>
+                  <div style={{
+                    width: '44px',
+                    height: '24px',
+                    backgroundColor: preferEmail ? '#5EB77D' : '#3A3A3B',
+                    borderRadius: '12px',
+                    position: 'relative',
+                    transition: 'all 0.2s ease-in-out'
+                  }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '50%',
+                      position: 'absolute',
+                      top: '2px',
+                      left: preferEmail ? '22px' : '2px',
+                      transition: 'all 0.2s ease-in-out',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }} />
+                  </div>
+                </div>
+
+                {/* Text Toggle */}
+                <div 
+                  onClick={() => setPreferText(!preferText)}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '12px',
+                    cursor: 'pointer',
+                    padding: '10px 16px',
+                    backgroundColor: preferText ? 'rgba(94, 183, 125, 0.15)' : '#2C2D2E',
+                    border: `2px solid ${preferText ? '#5EB77D' : '#3A3A3B'}`,
+                    borderRadius: '10px',
+                    transition: 'all 0.15s ease-in-out'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={preferText ? '#5EB77D' : '#7A7A7A'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  <span style={{ color: preferText ? '#FFFFFF' : '#A5A5A5', fontSize: '14px', fontWeight: '500' }}>Text</span>
+                  <div style={{
+                    width: '44px',
+                    height: '24px',
+                    backgroundColor: preferText ? '#5EB77D' : '#3A3A3B',
+                    borderRadius: '12px',
+                    position: 'relative',
+                    transition: 'all 0.2s ease-in-out'
+                  }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '50%',
+                      position: 'absolute',
+                      top: '2px',
+                      left: preferText ? '22px' : '2px',
+                      transition: 'all 0.2s ease-in-out',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }} />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1412,40 +1843,119 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
               Project / Work Information
             </h3>
 
-            {/* Type of Work */}
+            {/* Type of Work - Multi-select chips */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{
                 display: 'block',
                 color: '#A5A5A5',
                 fontSize: '13px',
                 fontWeight: '500',
-                marginBottom: '8px'
+                marginBottom: '10px'
               }}>
                 Type of Work <span style={{ color: '#C9A049' }}>*</span>
               </label>
-              <input
-                type="text"
-                placeholder="e.g., Home Renovation"
-                value={typeOfWork}
-                onChange={(e) => setTypeOfWork(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  backgroundColor: '#2C2D2E',
-                  border: '1px solid #3A3A3B',
-                  borderRadius: '10px',
-                  color: '#FFFFFF',
-                  fontSize: '14px',
-                  outline: 'none',
-                  transition: 'all 0.15s ease-in-out'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#5EB77D';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#3A3A3B';
-                }}
-              />
+              <div style={{
+                display: 'flex',
+                gap: '10px',
+                flexWrap: 'wrap',
+                marginBottom: '12px'
+              }}>
+                {availableWorkTypes.map((workType) => {
+                  const isSelected = selectedWorkTypes.includes(workType);
+                  return (
+                    <button
+                      key={workType}
+                      onClick={() => toggleWorkType(workType)}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: isSelected ? '#C9A049' : 'transparent',
+                        color: isSelected ? '#1B1C1D' : '#A5A5A5',
+                        border: `2px solid ${isSelected ? '#C9A049' : '#3A3A3B'}`,
+                        borderRadius: '20px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = '#C9A049';
+                          e.currentTarget.style.color = '#FFFFFF';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = '#3A3A3B';
+                          e.currentTarget.style.color = '#A5A5A5';
+                        }
+                      }}
+                    >
+                      {workType}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Add Custom Work Type */}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="Add custom work type..."
+                  value={customWorkTypeInput}
+                  onChange={(e) => setCustomWorkTypeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addCustomWorkType();
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '11px 14px',
+                    backgroundColor: '#2C2D2E',
+                    border: '1px solid #3A3A3B',
+                    borderRadius: '10px',
+                    color: '#FFFFFF',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.15s ease-in-out'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#5EB77D';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#3A3A3B';
+                  }}
+                />
+                <button
+                  onClick={addCustomWorkType}
+                  style={{
+                    padding: '11px 16px',
+                    backgroundColor: 'transparent',
+                    border: '2px solid #5EB77D',
+                    borderRadius: '10px',
+                    color: '#5EB77D',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease-in-out',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#5EB77D';
+                    e.currentTarget.style.color = '#1B1C1D';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#5EB77D';
+                  }}
+                >
+                  <Plus size={16} />
+                  Add
+                </button>
+              </div>
             </div>
 
             {/* Rooms / Areas Chips */}
@@ -1629,7 +2139,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
               </div>
             </div>
 
-            {/* Project Notes */}
+            {/* Internal Notes */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{
                 display: 'block',
@@ -1638,12 +2148,12 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
                 fontWeight: '500',
                 marginBottom: '8px'
               }}>
-                Project Notes <span style={{ color: '#7A7A7A', fontSize: '12px' }}>(optional)</span>
+                Internal Notes <span style={{ color: '#7A7A7A', fontSize: '12px' }}>(staff only - visible sitewide)</span>
               </label>
               <textarea
-                placeholder="Add any additional notes about the project..."
-                value={projectNotes}
-                onChange={(e) => setProjectNotes(e.target.value)}
+                placeholder="Add internal notes about this client..."
+                value={internalNotes}
+                onChange={(e) => setInternalNotes(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '11px 14px',
@@ -1654,7 +2164,8 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
                   fontSize: '14px',
                   outline: 'none',
                   transition: 'all 0.15s ease-in-out',
-                  resize: 'vertical'
+                  resize: 'vertical',
+                  minHeight: '80px'
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#5EB77D';
@@ -1663,6 +2174,104 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
                   e.target.style.borderColor = '#3A3A3B';
                 }}
               />
+              <p style={{
+                color: '#E67E22',
+                fontSize: '12px',
+                margin: '6px 0 0 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                These notes are for internal use only and will NOT be shared with the client.
+              </p>
+            </div>
+
+            {/* Client-Shareable Notes */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <label style={{
+                  color: '#A5A5A5',
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  Client Notes <span style={{ color: '#7A7A7A', fontSize: '12px' }}>(can be shared to portal)</span>
+                </label>
+                <div 
+                  onClick={() => setShareNotesWithClient(!shareNotesWithClient)}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <span style={{ color: shareNotesWithClient ? '#5EB77D' : '#7A7A7A', fontSize: '12px' }}>
+                    {shareNotesWithClient ? 'Sharing to portal' : 'Not shared'}
+                  </span>
+                  <div style={{
+                    width: '36px',
+                    height: '20px',
+                    backgroundColor: shareNotesWithClient ? '#5EB77D' : '#3A3A3B',
+                    borderRadius: '10px',
+                    position: 'relative',
+                    transition: 'all 0.2s ease-in-out'
+                  }}>
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '50%',
+                      position: 'absolute',
+                      top: '2px',
+                      left: shareNotesWithClient ? '18px' : '2px',
+                      transition: 'all 0.2s ease-in-out',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                    }} />
+                  </div>
+                </div>
+              </div>
+              <textarea
+                placeholder="Add notes to share with the client through their portal..."
+                value={clientNotes}
+                onChange={(e) => setClientNotes(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '11px 14px',
+                  backgroundColor: '#2C2D2E',
+                  border: `1px solid ${shareNotesWithClient ? '#5EB77D' : '#3A3A3B'}`,
+                  borderRadius: '10px',
+                  color: '#FFFFFF',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'all 0.15s ease-in-out',
+                  resize: 'vertical',
+                  minHeight: '80px'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#5EB77D';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = shareNotesWithClient ? '#5EB77D' : '#3A3A3B';
+                }}
+              />
+              {shareNotesWithClient && (
+                <p style={{
+                  color: '#5EB77D',
+                  fontSize: '12px',
+                  margin: '6px 0 0 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  These notes will be visible to the client in their portal.
+                </p>
+              )}
             </div>
           </div>
 
@@ -1846,9 +2455,9 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
                 </label>
                 <input
                   type="text"
-                  placeholder="62701"
+                  placeholder="99201"
                   value={zip}
-                  onChange={(e) => setZip(e.target.value)}
+                  onChange={(e) => handleZipChange(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '11px 14px',
@@ -1878,7 +2487,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
                   fontWeight: '500',
                   marginBottom: '8px'
                 }}>
-                  Region
+                  Region <span style={{ color: '#7A7A7A', fontSize: '11px' }}>(auto-filled by ZIP)</span>
                 </label>
                 <div style={{ position: 'relative' }}>
                   <select
@@ -1887,8 +2496,8 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
                     style={{
                       width: '100%',
                       padding: '11px 36px 11px 14px',
-                      backgroundColor: '#2C2D2E',
-                      border: '1px solid #3A3A3B',
+                      backgroundColor: region && zipToRegion[zip] === region ? 'rgba(94, 183, 125, 0.1)' : '#2C2D2E',
+                      border: `1px solid ${region && zipToRegion[zip] === region ? '#5EB77D' : '#3A3A3B'}`,
                       borderRadius: '10px',
                       color: region ? '#FFFFFF' : '#7A7A7A',
                       fontSize: '14px',
@@ -1901,15 +2510,13 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
                       e.target.style.borderColor = '#5EB77D';
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = '#3A3A3B';
+                      e.target.style.borderColor = region && zipToRegion[zip] === region ? '#5EB77D' : '#3A3A3B';
                     }}
                   >
                     <option value="">Select region</option>
-                    <option value="North">North</option>
-                    <option value="South">South</option>
-                    <option value="East">East</option>
-                    <option value="West">West</option>
-                    <option value="Central">Central</option>
+                    {availableRegions.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
                   </select>
                   <ChevronDown 
                     size={16} 
@@ -1919,7 +2526,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
                       top: '50%',
                       transform: 'translateY(-50%)',
                       pointerEvents: 'none',
-                      color: '#7A7A7A'
+                      color: region && zipToRegion[zip] === region ? '#5EB77D' : '#7A7A7A'
                     }}
                   />
                 </div>
@@ -1977,6 +2584,181 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
                 />
               </div>
             </div>
+
+            {/* Billing Address Fields - Only show when billingAddressSame is false */}
+            {!billingAddressSame && (
+              <div style={{ 
+                padding: '20px', 
+                backgroundColor: '#1B1C1D', 
+                borderRadius: '12px', 
+                marginBottom: '16px',
+                border: '1px solid #3A3A3B'
+              }}>
+                <h4 style={{ 
+                  color: '#C9A049', 
+                  fontSize: '14px', 
+                  fontWeight: '600', 
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <MapPin size={16} />
+                  Billing Address
+                </h4>
+
+                {/* Billing Street Address */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{
+                    display: 'block',
+                    color: '#A5A5A5',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    marginBottom: '8px'
+                  }}>
+                    Street Address <span style={{ color: '#C9A049' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., 456 Billing St"
+                    value={billingStreetAddress}
+                    onChange={(e) => setBillingStreetAddress(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '11px 14px',
+                      backgroundColor: '#2C2D2E',
+                      border: '1px solid #3A3A3B',
+                      borderRadius: '10px',
+                      color: '#FFFFFF',
+                      fontSize: '14px',
+                      outline: 'none',
+                      transition: 'all 0.15s ease-in-out'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#5EB77D';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#3A3A3B';
+                    }}
+                  />
+                </div>
+
+                {/* Billing City / State / ZIP */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1fr 1fr',
+                  gap: '16px'
+                }}>
+                  {/* Billing City */}
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      color: '#A5A5A5',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      marginBottom: '8px'
+                    }}>
+                      City <span style={{ color: '#C9A049' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Spokane"
+                      value={billingCity}
+                      onChange={(e) => setBillingCity(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        backgroundColor: '#2C2D2E',
+                        border: '1px solid #3A3A3B',
+                        borderRadius: '10px',
+                        color: '#FFFFFF',
+                        fontSize: '14px',
+                        outline: 'none',
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#5EB77D';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#3A3A3B';
+                      }}
+                    />
+                  </div>
+
+                  {/* Billing State */}
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      color: '#A5A5A5',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      marginBottom: '8px'
+                    }}>
+                      State <span style={{ color: '#C9A049' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="WA"
+                      value={billingState}
+                      onChange={(e) => setBillingState(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        backgroundColor: '#2C2D2E',
+                        border: '1px solid #3A3A3B',
+                        borderRadius: '10px',
+                        color: '#FFFFFF',
+                        fontSize: '14px',
+                        outline: 'none',
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#5EB77D';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#3A3A3B';
+                      }}
+                    />
+                  </div>
+
+                  {/* Billing ZIP */}
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      color: '#A5A5A5',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      marginBottom: '8px'
+                    }}>
+                      ZIP <span style={{ color: '#C9A049' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="99201"
+                      value={billingZip}
+                      onChange={(e) => setBillingZip(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        backgroundColor: '#2C2D2E',
+                        border: '1px solid #3A3A3B',
+                        borderRadius: '10px',
+                        color: '#FFFFFF',
+                        fontSize: '14px',
+                        outline: 'none',
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#5EB77D';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#3A3A3B';
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Property Notes */}
             <div style={{ marginBottom: '16px' }}>
@@ -2036,30 +2818,33 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
           gap: '12px'
         }}>
           <button
+            onClick={handleSaveClient}
+            disabled={saving}
             style={{
               padding: '12px 24px',
-              backgroundColor: 'transparent',
-              border: '2px solid #C9A049',
+              backgroundColor: '#3498DB',
+              border: 'none',
               borderRadius: '12px',
               color: '#FFFFFF',
               fontSize: '14px',
               fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease-in-out'
+              cursor: saving ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease-in-out',
+              opacity: saving ? 0.7 : 1
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#C9A04915';
-              e.currentTarget.style.borderColor = '#D9B563';
+              if (!saving) e.currentTarget.style.backgroundColor = '#2980B9';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.borderColor = '#C9A049';
+              e.currentTarget.style.backgroundColor = '#3498DB';
             }}
           >
-            Save Client
+            {saving ? 'Saving...' : 'Save Client'}
           </button>
           
           <button
+            onClick={handleSaveAndCreateQuote}
+            disabled={saving}
             style={{
               padding: '12px 24px',
               backgroundColor: 'transparent',
@@ -2068,15 +2853,18 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
               color: '#FFFFFF',
               fontSize: '14px',
               fontWeight: '600',
-              cursor: 'pointer',
+              cursor: saving ? 'not-allowed' : 'pointer',
               transition: 'all 0.15s ease-in-out',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '8px',
+              opacity: saving ? 0.7 : 1
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#C9A04915';
-              e.currentTarget.style.borderColor = '#D9B563';
+              if (!saving) {
+                e.currentTarget.style.backgroundColor = '#C9A04915';
+                e.currentTarget.style.borderColor = '#D9B563';
+              }
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'transparent';
@@ -2088,6 +2876,8 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
           </button>
           
           <button
+            onClick={handleSaveAndScheduleVisit}
+            disabled={saving}
             style={{
               padding: '12px 24px',
               backgroundColor: '#C9A049',
@@ -2096,15 +2886,18 @@ export default function BoardroomNewClientModal({ isOpen, onClose }: BoardroomNe
               color: '#1B1C1D',
               fontSize: '14px',
               fontWeight: '600',
-              cursor: 'pointer',
+              cursor: saving ? 'not-allowed' : 'pointer',
               transition: 'all 0.15s ease-in-out',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '8px',
+              opacity: saving ? 0.7 : 1
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#D9B563';
-              e.currentTarget.style.borderColor = '#D9B563';
+              if (!saving) {
+                e.currentTarget.style.backgroundColor = '#D9B563';
+                e.currentTarget.style.borderColor = '#D9B563';
+              }
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = '#C9A049';
