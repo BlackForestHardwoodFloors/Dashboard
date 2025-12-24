@@ -6,7 +6,8 @@ import {
   AlertCircle,
   Eye,
   User,
-  Clock
+  Clock,
+  MessageCircle
 } from 'lucide-react';
 
 interface Photo {
@@ -30,6 +31,9 @@ interface Photo {
   latitude?: number;
   longitude?: number;
   isFavorite: boolean;
+  hasNewNotes?: boolean;
+  notesUpdatedAt?: string;
+  notesUpdatedBy?: string;
 }
 
 interface PhotoCardProps {
@@ -136,6 +140,48 @@ export default function PhotoCard({ photo, isSelected, onSelect, onClick }: Phot
           display: 'flex',
           gap: '6px'
         }}>
+          {photo.hasNewNotes && (
+            <div style={{
+              padding: '4px 8px',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(231, 76, 60, 0.95)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <MessageCircle size={12} color="#FFFFFF" />
+              <span style={{ color: '#FFFFFF', fontSize: '9px', fontWeight: '700' }}>NEW</span>
+            </div>
+          )}
+          {photo.gpsVerified && (
+            <div style={{
+              padding: '4px 6px',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(123, 170, 142, 0.9)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '3px'
+            }}>
+              <MapPin size={10} color="#FFFFFF" />
+              <CheckCircle2 size={10} color="#FFFFFF" />
+            </div>
+          )}
+          {!photo.gpsVerified && photo.latitude && (
+            <div style={{
+              padding: '4px 6px',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(231, 76, 60, 0.9)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '3px'
+            }}>
+              <MapPin size={10} color="#FFFFFF" />
+              <AlertCircle size={10} color="#FFFFFF" />
+            </div>
+          )}
           {photo.isFavorite && (
             <div style={{
               padding: '4px 6px',

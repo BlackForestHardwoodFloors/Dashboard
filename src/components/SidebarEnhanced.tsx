@@ -20,6 +20,7 @@ import {
   Briefcase, 
   Clock3, 
   MessageSquare, 
+  Radio,
   Camera,
   Package, 
   Building2, 
@@ -248,6 +249,13 @@ const colorSets: Record<string, { base: string; highlight: string; shadow: strin
     hover: '#9D80A0',
     active: '#5E4A5F'
   },
+  commHub: {
+    base: '#5C6BC0',
+    highlight: '#8E99E8',
+    shadow: '#3F4B99',
+    hover: '#7986D4',
+    active: '#3A4590'
+  },
   photos: {
     base: '#0F7BFF',
     highlight: '#5BA7FF',
@@ -311,7 +319,7 @@ interface SidebarEnhancedProps {
   onNavigate?: (page: string, subPage?: string) => void;
   darkMode?: boolean;
   onToggleDarkMode?: () => void;
-  userRole?: 'admin' | 'manager' | 'member';
+  userRole?: 'admin' | 'manager' | 'member' | 'employee';
 }
 
 // 3D Plastic Button Component matching Figma Make style
@@ -471,8 +479,13 @@ export function SidebarEnhanced({
   onNavigate, 
   darkMode = true, 
   onToggleDarkMode,
-  userRole = 'admin'
+  userRole
 }: SidebarEnhancedProps) {
+  // Auto-detect role from localStorage if not provided
+  const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+  const detectedRole = storedUser ? (JSON.parse(storedUser).portalType === 'employee' ? 'employee' : 'admin') : 'admin';
+  const effectiveRole = userRole || detectedRole;
+
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [activeItem, setActiveItem] = useState(activePage);
 
@@ -486,6 +499,7 @@ export function SidebarEnhanced({
   const menuConfig: MenuItem[] = [
     { icon: Home, label: 'Dashboard', path: 'Dashboard', colorKey: 'dashboard' },
     { icon: MessageSquare, label: 'Messages', path: 'Messages', colorKey: 'messages' },
+    { icon: Radio, label: 'Comm Hub', path: 'Communication Hub', colorKey: 'commHub' },
     { 
       icon: UserCircle, 
       label: 'Clients', 
@@ -540,7 +554,7 @@ export function SidebarEnhanced({
       label: 'Time Sheet', 
       path: 'Time Sheet',
       colorKey: 'timeSheet',
-      subItems: userRole === 'admin' || userRole === 'manager' ? [
+      subItems: effectiveRole === 'admin' || effectiveRole === 'manager' ? [
         { label: 'Time Logs', icon: Clock3, path: 'Time Sheet' },
         { label: 'Wage Rate', icon: DollarSign, path: 'Time Sheet/WageRate' },
         { label: 'General Tasks', icon: ClipboardList, path: 'Time Sheet/GeneralTasks' },
@@ -571,7 +585,7 @@ export function SidebarEnhanced({
         { label: 'Admin Dashboard', icon: LayoutDashboard, path: 'Mode/Admin' },
         { label: 'Employee Portal', icon: HardHat, path: 'Mode/Employee' },
         { label: 'Customer Portal', icon: UserCog, path: 'Mode/Customer' },
-        ...(userRole === 'admin' ? [
+        ...(effectiveRole === 'admin' ? [
           { label: 'Employees', icon: Users, path: 'Settings/Employees' },
           { label: 'Departments', icon: Building, path: 'Settings/Departments' },
           { label: 'Roles & Permissions', icon: Shield, path: 'Settings/Roles' },
@@ -580,6 +594,11 @@ export function SidebarEnhanced({
       ]
     }
   ];
+
+  // Filter menu for employees - they only see limited options
+  const filteredMenu = effectiveRole === 'employee' 
+    ? menuConfig.filter(item => ['Dashboard', 'Messages', 'Calendar', 'Jobs', 'Time Sheet', 'Photos'].includes(item.label))
+    : menuConfig;
 
   const toggleExpand = (label: string) => {
     setExpandedMenus(prev => 
@@ -635,7 +654,7 @@ export function SidebarEnhanced({
       boxSizing: 'border-box'
     }}>
       {/* Menu Items */}
-      {menuConfig.map((item, index) => {
+      {filteredMenu.map((item, index) => {
         const hasSubItems = item.subItems && item.subItems.length > 0;
         const isExpanded = expandedMenus.includes(item.label);
         const itemIsActive = isActive(item.path);

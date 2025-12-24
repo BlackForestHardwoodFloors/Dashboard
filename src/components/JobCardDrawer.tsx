@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, MapPin, Calendar, FileText, Clock, MessageSquare, Phone, Mail, Home, Briefcase, ChevronRight, AlertCircle, Send, Camera, Clipboard, ExternalLink, Building2, Loader, Check, Pencil, Users, UserCheck, Truck } from 'lucide-react';
+import { X, User, MapPin, Calendar, FileText, Clock, MessageSquare, Phone, Mail, Home, Briefcase, ChevronRight, ChevronLeft, AlertCircle, Send, Camera, Clipboard, ExternalLink, Building2, Loader, Check, Pencil, Users, UserCheck, Truck, Trash2 } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -22,6 +23,28 @@ const getJobColor = (purpose?: string, foreman?: string): string => {
     return FOREMAN_COLORS[foreman || 'Unassigned'] || '#C9A049';
   }
   return '#C9A049'; // Default gold
+};
+
+// Check if appointment is a multi-day job (not a timed appointment)
+const isMultiDayJob = (purpose?: string, startDate?: string, endDate?: string): boolean => {
+  const p = purpose?.toLowerCase() || '';
+  // These are timed appointments - always show time
+  if (p.includes('onsite') || p.includes('visit') || p.includes('touchup') || p.includes('touch-up') || p.includes('delivery') || p.includes('pickup') || p.includes('meeting')) {
+    return false;
+  }
+  // For jobs/projects, check if multi-day
+  if (p.includes('job') || p.includes('project') || p.includes('install') || p.includes('sand') || p.includes('finish')) {
+    // If dates are different, it's multi-day
+    if (startDate && endDate && startDate !== endDate) {
+      return true;
+    }
+  }
+  return false;
+};
+
+// Check if time should be shown in calendar display
+const shouldShowTime = (purpose?: string, startDate?: string, endDate?: string): boolean => {
+  return !isMultiDayJob(purpose, startDate, endDate);
 };
 
 interface JobCardDrawerProps { isOpen: boolean; appointmentId: number | null; onClose: () => void; onNavigate?: (page: string) => void; onDataUpdate?: () => void; }
@@ -50,6 +73,162 @@ function EditableField({ label, value, onSave, type = 'text', options, color = '
     </div>);
   }
   return (<div onClick={() => setEditing(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', cursor: 'pointer', padding: '4px 8px', margin: '-4px -8px', borderRadius: '6px', transition: 'background 0.15s', width: '100%' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#333'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}><span style={{ color, fontSize: '14px', fontWeight: '500' }}>{value || 'Click to add...'}</span><Pencil size={12} color="#666" style={{ flexShrink: 0 }} /></div>);
+}
+
+// Calendar Date Picker Component
+function DatePickerField({ value, onSave, label }: { value: string; onSave: (val: string) => void; label?: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    return value ? new Date(value + 'T00:00:00') : new Date();
+  });
+  const [saving, setSaving] = useState(false);
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  const generateCalendarDays = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startPadding = firstDay.getDay();
+    const days: { date: Date; isCurrentMonth: boolean }[] = [];
+    
+    for (let i = 0; i < startPadding; i++) {
+      days.push({ date: new Date(year, month, -startPadding + i + 1), isCurrentMonth: false });
+    }
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      days.push({ date: new Date(year, month, i), isCurrentMonth: true });
+    }
+    const remaining = 42 - days.length;
+    for (let i = 1; i <= remaining; i++) {
+      days.push({ date: new Date(year, month + 1, i), isCurrentMonth: false });
+    }
+    return days;
+  };
+
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return 'Select date...';
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const handleDateSelect = async (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    setSaving(true);
+    await onSave(dateStr);
+    setSaving(false);
+    setIsOpen(false);
+  };
+
+  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)} 
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          gap: '8px', 
+          cursor: 'pointer', 
+          padding: '4px 8px', 
+          margin: '-4px -8px', 
+          borderRadius: '6px', 
+          transition: 'background 0.15s', 
+          width: '100%' 
+        }} 
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#333'} 
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+      >
+        <span style={{ color: '#FFF', fontSize: '14px', fontWeight: '500' }}>{formatDisplayDate(value)}</span>
+        <Calendar size={12} color="#666" style={{ flexShrink: 0 }} />
+      </div>
+
+      {isOpen && (
+        <>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }} onClick={() => setIsOpen(false)} />
+          <div style={{ 
+            position: 'absolute', 
+            top: '100%', 
+            left: 0, 
+            marginTop: '8px', 
+            backgroundColor: '#1A1A1A', 
+            border: '2px solid #C9A049', 
+            borderRadius: '12px', 
+            padding: '16px', 
+            zIndex: 101, 
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)', 
+            width: '280px' 
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <button onClick={prevMonth} style={{ padding: '6px', backgroundColor: '#252525', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <ChevronLeft size={16} color="#FFF" />
+              </button>
+              <span style={{ color: '#FFF', fontWeight: '600', fontSize: '14px' }}>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</span>
+              <button onClick={nextMonth} style={{ padding: '6px', backgroundColor: '#252525', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <ChevronRight size={16} color="#FFF" />
+              </button>
+            </div>
+
+            {/* Day names */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '4px' }}>
+              {dayNames.map((d, i) => (
+                <div key={i} style={{ textAlign: 'center', padding: '4px', color: '#666', fontSize: '11px', fontWeight: '600' }}>{d}</div>
+              ))}
+            </div>
+
+            {/* Calendar days */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+              {generateCalendarDays().map((day, i) => {
+                const dateStr = day.date.toISOString().split('T')[0];
+                const isSelected = value === dateStr;
+                const isToday = day.date.toDateString() === new Date().toDateString();
+                return (
+                  <button 
+                    key={i} 
+                    onClick={() => handleDateSelect(day.date)} 
+                    disabled={saving}
+                    style={{ 
+                      padding: '8px 4px', 
+                      backgroundColor: isSelected ? '#C9A049' : 'transparent', 
+                      border: isToday && !isSelected ? '1px solid #C9A049' : 'none', 
+                      borderRadius: '6px', 
+                      color: isSelected ? '#FFF' : day.isCurrentMonth ? '#FFF' : '#555', 
+                      fontSize: '13px', 
+                      cursor: 'pointer',
+                      opacity: day.isCurrentMonth ? 1 : 0.4
+                    }}
+                  >
+                    {day.date.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Quick actions */}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #3D3D3D' }}>
+              <button 
+                onClick={() => handleDateSelect(new Date())} 
+                style={{ flex: 1, padding: '8px', backgroundColor: '#252525', border: '1px solid #3D3D3D', borderRadius: '6px', color: '#FFF', fontSize: '12px', cursor: 'pointer' }}
+              >
+                Today
+              </button>
+              <button 
+                onClick={() => setIsOpen(false)} 
+                style={{ flex: 1, padding: '8px', backgroundColor: '#3D3D3D', border: 'none', borderRadius: '6px', color: '#FFF', fontSize: '12px', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 // Multi-select for team members
@@ -100,9 +279,15 @@ export default function JobCardDrawer({ isOpen, appointmentId, onClose, onNaviga
   const [messages, setMessages] = useState<Message[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [descriptions, setDescriptions] = useState<{ id: number; name: string; color: string | null; isJobType: boolean }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showAddPurpose, setShowAddPurpose] = useState(false);
+  const [newPurposeName, setNewPurposeName] = useState('');
+  const [newPurposeColor, setNewPurposeColor] = useState('#C9A049');
+  const [newPurposeIsJob, setNewPurposeIsJob] = useState(false);
 
   useEffect(() => { if (isOpen && appointmentId) fetchAllData(); }, [isOpen, appointmentId]);
   const getHeaders = () => ({ 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' });
@@ -121,6 +306,12 @@ export default function JobCardDrawer({ isOpen, appointmentId, onClose, onNaviga
       try {
         const empRes = await fetch(`${API_URL}/employee/get-employee`, { headers });
         if (empRes.ok) { const empData = await empRes.json(); setEmployees(empData.data?.employee || empData.employee || []); }
+      } catch {}
+      
+      // Fetch descriptions
+      try {
+        const ptRes = await fetch(`${API_URL}/descriptions`, { headers });
+        if (ptRes.ok) { const ptData = await ptRes.json(); setDescriptions(ptData.data || []); }
       } catch {}
       
       if (apt?.contact) {
@@ -194,11 +385,69 @@ export default function JobCardDrawer({ isOpen, appointmentId, onClose, onNaviga
   const jobColor = getJobColor(appointment?.purpose, appointment?.foreman);
   const tabs = [{ id: 'overview' as TabType, label: 'Overview', icon: User }, { id: 'briefing' as TabType, label: 'Briefing', icon: Clipboard }, { id: 'photos' as TabType, label: 'Photos', icon: Camera }, { id: 'messages' as TabType, label: 'Messages', icon: MessageSquare }, { id: 'jobs' as TabType, label: 'Jobs & Quotes', icon: Briefcase }, { id: 'files' as TabType, label: 'Files', icon: FileText }];
   const fmtDate = (d: string) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
-  const fmtTime = (t: string) => { if (!t) return 'N/A'; const [h, m] = t.split(':').map(Number); return `${h === 0 ? 12 : h > 12 ? h - 12 : h}:${m.toString().padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; };
+  const fmtTime = (t: string) => { if (!t) return 'N/A'; const [h, m] = t.split(':'); return `${h}:${m}`; };
   const fmtName = (n?: string) => n ? n.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : 'Unknown';
-  const purposeOpts = [{ value: 'Onsite Visit', label: 'Onsite Visit' }, { value: 'Project', label: 'Project' }, { value: 'Job', label: 'Job' }, { value: 'Wood Delivery', label: 'Wood Delivery' }, { value: 'Install', label: 'Install' }, { value: 'Sand & Finish', label: 'Sand & Finish' }];
-  const timeOpts = Array.from({ length: 96 }, (_, i) => { const h = Math.floor(i / 4), m = (i % 4) * 15; const v = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`; return { value: v, label: `${h === 0 ? 12 : h > 12 ? h - 12 : h}:${m.toString().padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}` }; });
-  const foremanOpts = [{ value: '', label: 'Unassigned' }, ...Object.keys(FOREMAN_COLORS).filter(k => k !== 'Unassigned').map(f => ({ value: f, label: f }))];
+  
+  // Fallback options if API hasn't loaded
+  const defaultPurposeOpts = [
+    { value: 'Onsite Visit', label: 'Onsite Visit', color: '#3498DB', isJobType: false },
+    { value: 'Wood Delivery', label: 'Wood Delivery', color: '#E74C3C', isJobType: false },
+    { value: 'Project', label: 'Project', color: null, isJobType: true },
+    { value: 'Job', label: 'Job', color: null, isJobType: true },
+    { value: 'Install', label: 'Install', color: null, isJobType: true },
+    { value: 'Sand & Finish', label: 'Sand & Finish', color: null, isJobType: true },
+  ];
+  
+  // Dynamic purpose options from database (MRU sorted) + Add New Description...tion
+  const purposeOpts = [
+    ...(descriptions.length > 0 ? descriptions : defaultPurposeOpts).map(pt => ({ value: pt.name, label: pt.name, color: pt.color, isJobType: pt.isJobType })),
+    { value: '__ADD_NEW__', label: '+ Add New Description...', color: null, isJobType: false }
+  ];
+  
+  const handlePurposeChange = async (value: string) => {
+    if (value === '__ADD_NEW__') {
+      setShowAddPurpose(true);
+      return;
+    }
+    // Update lastUsed for this description
+    try {
+      await fetch(`${API_URL}/descriptions/use`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ name: value })
+      });
+    } catch {}
+    await updateAppointment('purpose', value);
+  };
+  
+  const handleAddNewPurpose = async () => {
+    if (!newPurposeName.trim()) return;
+    try {
+      const res = await fetch(`${API_URL}/descriptions`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ 
+          name: newPurposeName.trim(), 
+          color: newPurposeIsJob ? null : newPurposeColor,
+          isJobType: newPurposeIsJob 
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDescriptions(prev => [data.data, ...prev]);
+        await updateAppointment('purpose', newPurposeName.trim());
+        setShowAddPurpose(false);
+        setNewPurposeName('');
+        setNewPurposeColor('#C9A049');
+        setNewPurposeIsJob(false);
+      }
+    } catch (err) {
+      console.error('Error adding description:', err);
+    }
+  };
+  
+  const timeOpts = Array.from({ length: 96 }, (_, i) => { const h = Math.floor(i / 4), m = (i % 4) * 15; const v = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`; return { value: v, label: `${h}:${m.toString().padStart(2, '0')}` }; });
+  const foremanOpts = [{ value: '', label: 'Unassigned' }, ...employees.map(e => ({ value: `${e.firstName} ${e.lastName}`, label: `${e.firstName} ${e.lastName}` }))];
 
   return (<>
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9998 }} />
@@ -216,8 +465,8 @@ export default function JobCardDrawer({ isOpen, appointmentId, onClose, onNaviga
                   {saveStatus && <span style={{ padding: '4px 10px', backgroundColor: '#27AE60', color: '#FFF', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>{saveStatus}</span>}
                 </div></div></div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#A0A0A0', fontSize: '13px' }}><Calendar size={14} color="#C9A049" />{fmtDate(appointment?.startDate || '')}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#A0A0A0', fontSize: '13px' }}><Clock size={14} color="#3B9CAA" />{fmtTime(appointment?.startTime || '')} - {fmtTime(appointment?.endTime || '')}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#A0A0A0', fontSize: '13px' }}><Calendar size={14} color="#C9A049" />{fmtDate(appointment?.startDate || '')}{appointment?.endDate && appointment.endDate !== appointment.startDate && ` - ${fmtDate(appointment.endDate)}`}</div>
+              {shouldShowTime(appointment?.purpose, appointment?.startDate, appointment?.endDate) && <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#A0A0A0', fontSize: '13px' }}><Clock size={14} color="#3B9CAA" />{fmtTime(appointment?.startTime || '')} - {fmtTime(appointment?.endTime || '')}</div>}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#A0A0A0', fontSize: '13px' }}><MapPin size={14} color="#E67E22" />{appointment?.location || 'No address'}</div>
             </div></div>
           <button onClick={onClose} style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2D2D2D', border: '1px solid #3D3D3D', borderRadius: '10px', cursor: 'pointer', color: '#A0A0A0' }}><X size={20} /></button>
@@ -242,10 +491,14 @@ export default function JobCardDrawer({ isOpen, appointmentId, onClose, onNaviga
             <div style={{ backgroundColor: '#242424', borderRadius: '12px', padding: '20px', border: '1px solid #3D3D3D' }}>
               <h3 style={{ color: '#3B9CAA', fontSize: '14px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={16} /> Appointment</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div><div style={{ color: '#666', fontSize: '11px', marginBottom: '4px' }}>Date</div><EditableField label="" value={appointment?.startDate || ''} type="date" onSave={v => { updateAppointment('startDate', v); updateAppointment('endDate', v); }} /></div>
-                <div><div style={{ color: '#666', fontSize: '11px', marginBottom: '4px' }}>Start Time</div><EditableField label="" value={appointment?.startTime || ''} type="select" options={timeOpts} onSave={v => updateAppointment('startTime', v)} /></div>
-                <div><div style={{ color: '#666', fontSize: '11px', marginBottom: '4px' }}>End Time</div><EditableField label="" value={appointment?.endTime || ''} type="select" options={timeOpts} onSave={v => updateAppointment('endTime', v)} /></div>
-                <div><div style={{ color: '#666', fontSize: '11px', marginBottom: '4px' }}>Purpose</div><EditableField label="" value={appointment?.purpose || ''} type="select" options={purposeOpts} onSave={v => updateAppointment('purpose', v)} /></div>
+                <div><div style={{ color: '#666', fontSize: '11px', marginBottom: '4px' }}>Start Date</div><DatePickerField value={appointment?.startDate || ''} onSave={v => updateAppointment('startDate', v)} /></div>
+                <div><div style={{ color: '#666', fontSize: '11px', marginBottom: '4px' }}>Completion Date</div><DatePickerField value={appointment?.endDate || ''} onSave={v => updateAppointment('endDate', v)} /></div>
+                {/* Only show time fields for timed appointments (not multi-day jobs) */}
+                {!isMultiDayJob(appointment?.purpose, appointment?.startDate, appointment?.endDate) && <>
+                  <div><div style={{ color: '#666', fontSize: '11px', marginBottom: '4px' }}>Start Time</div><EditableField label="" value={appointment?.startTime || ''} type="select" options={timeOpts} onSave={v => updateAppointment('startTime', v)} /></div>
+                  <div><div style={{ color: '#666', fontSize: '11px', marginBottom: '4px' }}>End Time</div><EditableField label="" value={appointment?.endTime || ''} type="select" options={timeOpts} onSave={v => updateAppointment('endTime', v)} /></div>
+                </>}
+                <div><div style={{ color: '#666', fontSize: '11px', marginBottom: '4px' }}>Description</div><EditableField label="" value={appointment?.purpose || ''} type="select" options={purposeOpts} onSave={handlePurposeChange} /></div>
               </div></div>
             
             {/* Team Assignment Section */}
@@ -279,7 +532,7 @@ export default function JobCardDrawer({ isOpen, appointmentId, onClose, onNaviga
           {activeTab === 'briefing' && <div style={{ backgroundColor: '#242424', borderRadius: '12px', padding: '24px', border: `2px solid ${jobColor}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}><div style={{ width: '40px', height: '40px', backgroundColor: jobColor, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Clipboard size={24} color="#FFF" /></div><div><h3 style={{ color: '#FFF', fontSize: '18px', fontWeight: '600', margin: 0 }}>Job Briefing</h3><p style={{ color: jobColor, fontSize: '13px', margin: '2px 0 0 0' }}>Read before starting</p></div></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-              <div style={{ padding: '16px', backgroundColor: '#1A1A1A', borderRadius: '10px' }}><div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Job Type</div><EditableField label="" value={appointment?.purpose || ''} type="select" options={purposeOpts} onSave={v => updateAppointment('purpose', v)} /></div>
+              <div style={{ padding: '16px', backgroundColor: '#1A1A1A', borderRadius: '10px' }}><div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Job Type</div><EditableField label="" value={appointment?.purpose || ''} type="select" options={purposeOpts} onSave={handlePurposeChange} /></div>
               <div style={{ padding: '16px', backgroundColor: '#1A1A1A', borderRadius: '10px' }}><div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Start Time</div><EditableField label="" value={appointment?.startTime || ''} type="select" options={timeOpts} onSave={v => updateAppointment('startTime', v)} /></div>
               <div style={{ padding: '16px', backgroundColor: '#1A1A1A', borderRadius: '10px' }}><div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>Foreman</div><EditableField label="" value={appointment?.foreman || ''} type="select" options={foremanOpts} onSave={v => updateAppointment('foreman', v)} /></div>
             </div>
@@ -324,10 +577,120 @@ export default function JobCardDrawer({ isOpen, appointmentId, onClose, onNaviga
           {activeTab === 'files' && <div><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}><h3 style={{ color: '#FFF', fontSize: '16px', fontWeight: '600', margin: 0 }}>Files</h3><button style={{ padding: '10px 16px', backgroundColor: '#3498DB', border: 'none', borderRadius: '8px', color: '#FFF', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><FileText size={16} /> Upload</button></div><div style={{ padding: '60px 20px', textAlign: 'center', backgroundColor: '#242424', borderRadius: '12px', border: '1px solid #3D3D3D' }}><FileText size={48} color="#3D3D3D" style={{ marginBottom: '16px' }} /><h4 style={{ color: '#E0E0E0', fontSize: '16px', marginBottom: '8px' }}>No Files</h4></div></div>}
         </>}
       </div>
-      <div style={{ padding: '16px 24px', borderTop: '1px solid #3D3D3D', backgroundColor: '#242424', display: 'flex', justifyContent: 'space-between' }}>
-        <button onClick={() => { if (onNavigate) onNavigate(`ClientIntake/${contact?.id || ''}`); onClose(); }} style={{ padding: '12px 20px', backgroundColor: '#2D2D2D', border: '1px solid #3D3D3D', borderRadius: '10px', color: '#A0A0A0', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}><User size={16} /> Full Profile</button>
+      <div style={{ padding: '16px 24px', borderTop: '1px solid #3D3D3D', backgroundColor: '#242424', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={() => { if (onNavigate) onNavigate(`ClientIntake/${contact?.id || ''}`); onClose(); }} style={{ padding: '12px 20px', backgroundColor: '#2D2D2D', border: '1px solid #3D3D3D', borderRadius: '10px', color: '#A0A0A0', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}><User size={16} /> Full Profile</button>
+          <button 
+            onClick={() => setShowDeleteConfirm(true)} 
+            style={{ padding: '12px 20px', backgroundColor: 'transparent', border: '1px solid #E74C3C', borderRadius: '10px', color: '#E74C3C', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Trash2 size={16} /> Delete
+          </button>
+        </div>
         <button onClick={onClose} style={{ padding: '12px 24px', backgroundColor: '#C9A049', border: 'none', borderRadius: '10px', color: '#FFF', fontSize: '14px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 3px 0 0 #A88438' }}>Done</button>
       </div>
+      
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Appointment"
+        message="Are you sure you want to delete this appointment? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="danger"
+        onConfirm={async () => {
+          try {
+            const token = localStorage.getItem('token');
+            await fetch(`${API_URL}/appointments/delete-appointment/${appointmentId}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            window.dispatchEvent(new Event('appointmentUpdated'));
+            setShowDeleteConfirm(false);
+            onClose();
+          } catch (err) {
+            console.error('Error deleting appointment:', err);
+          }
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
+      
+      {/* Add New Purpose Modal */}
+      {showAddPurpose && (
+        <>
+          <div onClick={() => setShowAddPurpose(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 10000 }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: '#1E1E1E', borderRadius: '16px', padding: '24px', width: '400px', maxWidth: '90vw', border: '1px solid #3D3D3D', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', zIndex: 10001 }}>
+            <h3 style={{ color: '#FFF', fontSize: '18px', fontWeight: '600', marginBottom: '20px', marginTop: 0 }}>Add New Description</h3>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ color: '#A0A0A0', fontSize: '12px', display: 'block', marginBottom: '6px' }}>Name</label>
+              <input
+                type="text"
+                value={newPurposeName}
+                onChange={e => setNewPurposeName(e.target.value)}
+                placeholder="e.g., Consultation"
+                style={{ width: '100%', padding: '12px', backgroundColor: '#242424', border: '1px solid #3D3D3D', borderRadius: '8px', color: '#FFF', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={newPurposeIsJob}
+                  onChange={e => setNewPurposeIsJob(e.target.checked)}
+                  style={{ width: '18px', height: '18px', accentColor: '#C9A049' }}
+                />
+                <span style={{ color: '#E0E0E0', fontSize: '14px' }}>This is a job type (uses employee color)</span>
+              </label>
+            </div>
+            
+            {!newPurposeIsJob && (
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ color: '#A0A0A0', fontSize: '12px', display: 'block', marginBottom: '6px' }}>Default Color</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {['#3498DB', '#E74C3C', '#27AE60', '#9B59B6', '#F39C12', '#1ABC9C', '#E91E63', '#C9A049'].map(color => (
+                    <div
+                      key={color}
+                      onClick={() => setNewPurposeColor(color)}
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        backgroundColor: color,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        border: newPurposeColor === color ? '3px solid #FFF' : '3px solid transparent',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    value={newPurposeColor}
+                    onChange={e => setNewPurposeColor(e.target.value)}
+                    style={{ width: '36px', height: '36px', border: 'none', borderRadius: '8px', cursor: 'pointer', padding: 0 }}
+                  />
+                </div>
+              </div>
+            )}
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                onClick={() => { setShowAddPurpose(false); setNewPurposeName(''); setNewPurposeColor('#C9A049'); setNewPurposeIsJob(false); }}
+                style={{ padding: '10px 20px', backgroundColor: 'transparent', border: '1px solid #3D3D3D', borderRadius: '8px', color: '#A0A0A0', fontSize: '14px', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddNewPurpose}
+                disabled={!newPurposeName.trim()}
+                style={{ padding: '10px 20px', backgroundColor: newPurposeName.trim() ? '#C9A049' : '#3D3D3D', border: 'none', borderRadius: '8px', color: '#FFF', fontSize: '14px', fontWeight: '600', cursor: newPurposeName.trim() ? 'pointer' : 'not-allowed' }}
+              >
+                Add Purpose
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
     <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
   </>);

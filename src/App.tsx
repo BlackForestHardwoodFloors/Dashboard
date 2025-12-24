@@ -18,7 +18,9 @@ import AdminLoginPage from './components/AdminLoginPage';
 import EmployeeLoginPage from './components/EmployeeLoginPage';
 import CustomerLoginPage from './components/CustomerLoginPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { EmployeePortal } from './components/EmployeePortal';
+import { EmployeePortal } from './components/employee-portal/EmployeePortal';
+import CommunicationHubPage from './components/CommunicationHubPage';
+// import { PortalPreview } from './components/PortalPreview'; // Uncomment if you have PortalPreview
 import './styles/globals.css';
 
 // Define all possible views
@@ -26,7 +28,8 @@ type ViewType =
   | 'dashboard' 
   | 'messages'
   | 'clients' 
-  | 'calendar' 
+  | 'calendar'
+  | 'communications'
   | 'quotes'
   | 'contracts'
   | 'work-orders'
@@ -62,10 +65,20 @@ function AppContent() {
   const [loginPage, setLoginPage] = useState<LoginPageType>(null);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [showJobDrawer, setShowJobDrawer] = useState(false);
+  
+  // Check if we're on preview route
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   // Detect which login page to show based on URL
   useEffect(() => {
     const path = window.location.pathname;
+    
+    // Check for preview mode first
+    if (path === '/preview' || path === '/preview/') {
+      setIsPreviewMode(true);
+      return;
+    }
+    
     if (path === '/admin/login' || path === '/admin/login/') {
       setLoginPage('admin-login');
     } else if (path === '/employee/login' || path === '/employee/login/') {
@@ -87,6 +100,11 @@ function AppContent() {
       setCurrentPortal(parsedUser.portalType || 'admin');
     }
   }, []);
+
+  // If in preview mode, show the Portal Preview (uncomment if you have PortalPreview)
+  // if (isPreviewMode) {
+  //   return <PortalPreview />;
+  // }
 
   // Handle login
   const handleLogin = async (email: string, password: string, portalType: PortalType) => {
@@ -167,6 +185,12 @@ function AppContent() {
       return;
     }
 
+    // Handle preview navigation
+    if (page === 'Preview') {
+      window.location.href = '/preview';
+      return;
+    }
+
     const pageMap: Record<string, ViewType> = {
       'Dashboard': 'dashboard',
       'Messages': 'messages',
@@ -208,16 +232,30 @@ function AppContent() {
       'Settings/Roles': 'settings',
       'Settings/Taxes': 'settings',
       'Client': 'clients',
+      'Communications': 'communications',
+      'CommunicationHub': 'communications',
+      'Communication Hub': 'communications',
     };
 
     // Handle mode switching
     if (page === 'Mode/Admin') {
+      const updatedUser = { ...user, portalType: 'admin' as const };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
       setCurrentPortal('admin');
+      setCurrentView('dashboard');
       return;
     } else if (page === 'Mode/Employee') {
+      const updatedUser = { ...user, portalType: 'employee' as const };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
       setCurrentPortal('employee');
+      setCurrentView('dashboard');
       return;
     } else if (page === 'Mode/Customer') {
+      const updatedUser = { ...user, portalType: 'customer' as const };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
       setCurrentPortal('customer');
       return;
     }
@@ -242,7 +280,9 @@ function AppContent() {
       case 'clients':
         return <ClientsPage onNavigate={handleNavigate} />;
       case 'calendar':
-        return <CalendarPage onNavigate={handleNavigate} />;
+        return <CalendarPage onNavigate={handleNavigate} hideOnsiteVisits={currentPortal === 'employee'} />;
+      case 'communications':
+        return <CommunicationHubPage onNavigate={handleNavigate} />;
       case 'quotes':
         return <QuotesPage onNavigate={handleNavigate} />;
       case 'contracts':
@@ -340,12 +380,97 @@ function AppContent() {
     );
   }
 
+  // Check if admin is previewing employee portal
+  const isAdminPreviewingEmployee = currentPortal === 'employee' && user?.role === 'Admin';
+  
+  // Check if employee is viewing a main page (Calendar, Photos, etc.)
+  const employeeViewingMainPage = currentPortal === 'employee' && 
+    ['calendar', 'photos', 'messages', 'time-sheet'].includes(currentView);
+
+  // Render employee main page with back button
+  const renderEmployeeMainPage = () => {
+    const pageComponent = (() => {
+      switch (currentView) {
+        case 'calendar':
+          return <CalendarPage onNavigate={handleNavigate} hideOnsiteVisits={currentPortal === 'employee'} />;
+        case 'photos':
+          return <PhotosPage onNavigate={handleNavigate} hideSidebar={true} />;
+        case 'messages':
+          return <MessagesPage onNavigate={handleNavigate} />;
+        case 'time-sheet':
+          return <TimeLogsPage onNavigate={handleNavigate} />;
+        default:
+          return null;
+      }
+    })();
+
+    return (
+      <div>
+        {/* Back to Employee Portal button */}
+        <button
+          onClick={() => setCurrentView('dashboard')}
+          style={{
+            position: 'fixed',
+            top: '10px',
+            left: '10px',
+            zIndex: 9999,
+            padding: '10px 20px',
+            backgroundColor: '#4F6A41',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+          }}
+        >
+          ← Back to Portal
+        </button>
+        {pageComponent}
+      </div>
+    );
+  };
+
   return (
     <main role="main" aria-label={`${currentPortal} Portal content`}>
       {currentPortal === 'customer' ? (
         renderCustomerContent()
       ) : currentPortal === 'employee' ? (
-        <EmployeePortal />
+        employeeViewingMainPage ? (
+          renderEmployeeMainPage()
+        ) : (
+          <>
+            {/* Back to Admin button for admin preview */}
+            {isAdminPreviewingEmployee && (
+              <button
+                onClick={() => {
+                  const updatedUser = { ...user, portalType: 'admin' as const };
+                  localStorage.setItem('user', JSON.stringify(updatedUser));
+                  setUser(updatedUser);
+                  setCurrentPortal('admin');
+                  setCurrentView('dashboard');
+                }}
+                style={{
+                  position: 'fixed',
+                  top: '10px',
+                  right: '10px',
+                  zIndex: 9999,
+                  padding: '10px 20px',
+                  backgroundColor: '#D4A024',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                }}
+              >
+                ← Back to Admin
+              </button>
+            )}
+            <EmployeePortal onNavigate={handleNavigate} />
+          </>
+        )
       ) : (
         renderAdminContent()
       )}

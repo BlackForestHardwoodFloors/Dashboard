@@ -7,12 +7,16 @@ import {
 import { Button } from './Button';
 import { SidebarEnhanced } from './SidebarEnhanced';
 
+// Google Maps API Key
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+
 interface User {
   id: number;
   firstName: string;
   lastName: string;
   email: string;
   role: string;
+  portalType?: 'admin' | 'employee' | 'customer';
 }
 
 interface FullDashboardProps {
@@ -37,7 +41,7 @@ export function FullDashboard({ onNavigate, onLogout, user }: FullDashboardProps
   // Detect mobile screen size
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 768 || user?.portalType === 'employee');
     };
     
     checkMobile();
@@ -135,13 +139,15 @@ export function FullDashboard({ onNavigate, onLogout, user }: FullDashboardProps
     { name: 'Garcia Restaurant', amount: 16400 }
   ];
 
-  // Create Google Maps URL with multiple markers
+  // Create Google Maps URL with the center location
   const createMapUrl = () => {
-    const baseUrl = 'https://www.google.com/maps/embed/v1/directions';
-    // For demo purposes, using a static map with markers
-    // In production, you would use actual addresses and Google Maps API key
-    const mapUrl = 'https://www.google.com/maps/embed?pb=!1m52!1m12!1m3!1d193595.15830869428!2d-74.11976373946234!3d40.69766374874431!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!4m37!3e0!4m5!1s0x89c24fa5d33f083b%3A0xc80b8f06e177fe62!2sNew%20York%2C%20NY!3m2!1d40.7127753!2d-74.0059728!4m5!1s0x89c25855c6480299%3A0x55194ec5a1ae072e!2sTimes%20Square%2C%20Manhattan%2C%20NY!3m2!1d40.758896!2d-73.98513199999999!4m5!1s0x89c2588f046ee661%3A0xa0b3281fcecc08c!2sManhattan%2C%20New%20York%2C%20NY!3m2!1d40.7830603!2d-73.9712488!4m5!1s0x89c25a316bf4d635%3A0x88e7d5c8f3d3c28!2sCentral%20Park%2C%20New%20York%2C%20NY!3m2!1d40.782865!2d-73.9653551!4m5!1s0x89c2588f046ee661%3A0xa0b3281fcecc08c!2sManhattan%2C%20New%20York%2C%20NY!3m2!1d40.7830603!2d-73.9712488!5e0!3m2!1sen!2sus!4v1699999999999!5m2!1sen!2sus';
-    return mapUrl;
+    // Use proper Maps Embed API format with API key
+    // Centered on Spokane, WA area
+    if (GOOGLE_MAPS_API_KEY) {
+      return `https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_API_KEY}&q=Spokane,WA&zoom=11`;
+    }
+    // Fallback if no API key
+    return '';
   };
 
   const nextPhoto = () => {
@@ -187,7 +193,8 @@ export function FullDashboard({ onNavigate, onLogout, user }: FullDashboardProps
                 setShowMobileSidebar(false);
                 onNavigate?.(page);
               }} 
-              onToggleDarkMode={() => setDarkMode(!darkMode)} 
+              onToggleDarkMode={() => setDarkMode(!darkMode)}
+              userRole={user?.portalType === 'employee' ? 'employee' : 'admin'}
             />
           </div>
         </>
@@ -195,7 +202,7 @@ export function FullDashboard({ onNavigate, onLogout, user }: FullDashboardProps
 
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <SidebarEnhanced activePage="Dashboard" darkMode={darkMode} onNavigate={onNavigate} onToggleDarkMode={() => setDarkMode(!darkMode)} />
+        <SidebarEnhanced activePage="Dashboard" darkMode={darkMode} onNavigate={onNavigate} onToggleDarkMode={() => setDarkMode(!darkMode)} userRole={user?.portalType === 'employee' ? 'employee' : 'admin'} />
       )}
 
       {/* Main Content */}
@@ -639,19 +646,38 @@ export function FullDashboard({ onNavigate, onLogout, user }: FullDashboardProps
                 onClick={(e) => { e.stopPropagation(); setShowMapModal(true); }}
               >
                 {/* Google Maps Background */}
-                <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m52!1m12!1m3!1d193595.15830869428!2d-74.11976373946234!3d40.69766374874431!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!4m37!3e0!4m5!1s0x89c24fa5d33f083b%3A0xc80b8f06e177fe62!2sNew%20York%2C%20NY!3m2!1d40.7127753!2d-74.0059728!4m5!1s0x89c25855c6480299%3A0x55194ec5a1ae072e!2sTimes%20Square%2C%20Manhattan%2C%20NY!3m2!1d40.758896!2d-73.98513199999999!4m5!1s0x89c2588f046ee661%3A0xa0b3281fcecc08c!2sManhattan%2C%20New%20York%2C%20NY!3m2!1d40.7830603!2d-73.9712488!4m5!1s0x89c25a316bf4d635%3A0x88e7d5c8f3d3c28!2sCentral%20Park%2C%20New%20York%2C%20NY!3m2!1d40.782865!2d-73.9653551!4m5!1s0x89c2588f046ee661%3A0xa0b3281fcecc08c!2sManhattan%2C%20New%20York%2C%20NY!3m2!1d40.7830603!2d-73.9712488!5e0!3m2!1sen!2sus!4v1699999999999!5m2!1sen!2sus"
-                  style={{
+                {GOOGLE_MAPS_API_KEY ? (
+                  <iframe
+                    src={`https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_API_KEY}&q=Spokane,WA&zoom=11`}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      border: 0,
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      pointerEvents: 'none'
+                    }}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div style={{
                     width: '100%',
                     height: '100%',
-                    border: 0,
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    pointerEvents: 'none'
-                  }}
-                  loading="lazy"
-                />
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: darkMode ? '#1A2F1A' : '#E8F5E9',
+                    color: darkMode ? '#666' : '#999',
+                    fontSize: '14px'
+                  }}>
+                    <MapPin size={24} style={{ marginRight: '8px', opacity: 0.5 }} />
+                    Map requires API key
+                  </div>
+                )}
                 {/* Map Grid Background */}
                 
                 {/* Route Line */}
@@ -1581,13 +1607,42 @@ export function FullDashboard({ onNavigate, onLogout, user }: FullDashboardProps
                 borderRadius: '12px',
                 overflow: 'hidden',
                 border: `1px solid ${borderColor}`,
-                position: 'relative',
-                backgroundImage: `
-                repeating-linear-gradient(0deg, ${darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'} 0px, transparent 1px, transparent 20px, ${darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'} 21px),
-                repeating-linear-gradient(90deg, ${darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'} 0px, transparent 1px, transparent 20px, ${darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'} 21px)
-              `
+                position: 'relative'
               }}
             >
+              {/* Google Maps Background */}
+              {GOOGLE_MAPS_API_KEY ? (
+                <iframe
+                  src={`https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_API_KEY}&q=Spokane,WA&zoom=11`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 0,
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    pointerEvents: 'none'
+                  }}
+                  loading="lazy"
+                />
+              ) : (
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: darkMode ? '#1A2F1A' : '#E8F5E9',
+                  color: darkMode ? '#666' : '#999',
+                  fontSize: '14px'
+                }}>
+                  <MapPin size={24} style={{ marginRight: '8px', opacity: 0.5 }} />
+                  Map requires API key
+                </div>
+              )}
               {/* Route Line */}
               <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
                 <defs>

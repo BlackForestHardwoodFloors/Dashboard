@@ -18,7 +18,9 @@ import {
   Zap,
   Edit,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 
 interface Photo {
@@ -68,8 +70,23 @@ export default function PhotoDetailModal({
 }: PhotoDetailModalProps) {
   const [showClientPortal, setShowClientPortal] = useState(photo.showInClientPortal);
   const [isFavorite, setIsFavorite] = useState(photo.isFavorite);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   if (!isOpen) return null;
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft' && hasPrevious) onPrevious?.();
+    if (e.key === 'ArrowRight' && hasNext) onNext?.();
+    if (e.key === 'Escape') {
+      if (isFullscreen) {
+        setIsFullscreen(false);
+      } else {
+        onClose();
+      }
+    }
+    if (e.key === 'f' || e.key === 'F') setIsFullscreen(!isFullscreen);
+  };
 
   const getPhaseColor = (phase: string) => {
     const colors: Record<string, string> = {
@@ -103,7 +120,182 @@ export default function PhotoDetailModal({
         justifyContent: 'center'
       }}
       onClick={onClose}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
     >
+      {/* Fullscreen Mode */}
+      {isFullscreen ? (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative'
+          }}
+        >
+          {/* Fullscreen Image */}
+          <img
+            src={photo.url}
+            alt={`${photo.room} - ${photo.phase}`}
+            onClick={() => setIsFullscreen(false)}
+            style={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              objectFit: 'contain',
+              cursor: 'zoom-out'
+            }}
+          />
+          
+          {/* Fullscreen Navigation */}
+          {hasPrevious && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onPrevious?.();
+              }}
+              style={{
+                position: 'absolute',
+                left: '20px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                backdropFilter: 'blur(10px)',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <ChevronLeft size={32} />
+            </button>
+          )}
+          
+          {hasNext && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onNext?.();
+              }}
+              style={{
+                position: 'absolute',
+                right: '20px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                backdropFilter: 'blur(10px)',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <ChevronRight size={32} />
+            </button>
+          )}
+          
+          {/* Fullscreen Header */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            padding: '20px 24px',
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start'
+          }}>
+            <div>
+              <h2 style={{ color: '#FFFFFF', fontSize: '20px', fontWeight: '600', margin: '0 0 4px 0' }}>
+                {photo.jobName}
+              </h2>
+              <p style={{ color: '#A0A0A0', fontSize: '13px', margin: 0 }}>
+                {photo.room} • {photo.phase} • {photo.timestamp}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsFullscreen(false);
+                }}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '600'
+                }}
+              >
+                <Minimize2 size={16} />
+                Exit Fullscreen
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+          
+          {/* Fullscreen Footer Hint */}
+          <div style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(10px)',
+            color: '#A0A0A0',
+            fontSize: '12px'
+          }}>
+            Press <kbd style={{ backgroundColor: '#333', padding: '2px 6px', borderRadius: '4px', margin: '0 4px' }}>ESC</kbd> or click image to exit • 
+            <kbd style={{ backgroundColor: '#333', padding: '2px 6px', borderRadius: '4px', margin: '0 4px' }}>←</kbd>
+            <kbd style={{ backgroundColor: '#333', padding: '2px 6px', borderRadius: '4px', margin: '0 4px' }}>→</kbd> to navigate
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Navigation Arrows */}
       {hasPrevious && (
         <button
@@ -331,18 +523,55 @@ export default function PhotoDetailModal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '100px 40px 40px 40px'
+            padding: '100px 40px 40px 40px',
+            position: 'relative'
           }}>
             <img
               src={photo.url}
               alt={`${photo.room} - ${photo.phase}`}
+              onClick={() => setIsFullscreen(true)}
               style={{
                 maxWidth: '100%',
                 maxHeight: '100%',
                 objectFit: 'contain',
-                borderRadius: '8px'
+                borderRadius: '8px',
+                cursor: 'zoom-in'
               }}
             />
+            
+            {/* Fullscreen Button */}
+            <button
+              onClick={() => setIsFullscreen(true)}
+              style={{
+                position: 'absolute',
+                bottom: '50px',
+                right: '50px',
+                padding: '10px 16px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = COMPANYCAM_BLUE;
+                e.currentTarget.style.borderColor = COMPANYCAM_BLUE;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+              }}
+            >
+              <Maximize2 size={14} />
+              Fullscreen
+            </button>
           </div>
         </div>
 
@@ -555,6 +784,8 @@ export default function PhotoDetailModal({
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

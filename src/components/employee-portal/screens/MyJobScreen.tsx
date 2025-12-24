@@ -1,6 +1,6 @@
 import { Calendar, DollarSign, TrendingUp, Lightbulb, MapPin, Phone, Clock, MessageSquare, Navigation, FileText, Camera as CameraIcon, StickyNote, Edit3, ClipboardEdit, Timer, Image as ImageIcon, ChevronRight, Briefcase, User } from 'lucide-react';
 import { useState } from 'react';
-import { useTheme } from './ThemeProvider';
+import { useTheme } from '../ThemeProvider';
 
 type Tab = 'jobs' | 'photos' | 'messages' | 'me';
 
@@ -10,7 +10,7 @@ interface MyJobScreenProps {
   onTabChange?: (tab: Tab) => void;
 }
 
-export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange }: MyJobScreenProps) {
+export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigate }: MyJobScreenProps & { onNavigate?: (page: string) => void }) {
   const { colors, employeeColor } = useTheme();
   const [expandedJobId, setExpandedJobId] = useState<number | null>(null);
   const [briefingJobId, setBriefingJobId] = useState<number | null>(null);
@@ -183,7 +183,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange }: MyJobSc
             </button>
 
             <button
-              onClick={() => onTabChange?.('photos')}
+              onClick={() => onNavigate?.('Photos')}
               style={{
                 padding: '12px 8px',
                 backgroundColor: '#0F7BFF',
@@ -262,7 +262,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange }: MyJobSc
             gap: '10px'
           }}>
             <button
-              onClick={() => console.log('Navigate to Calendar')}
+              onClick={() => onNavigate?.('Calendar')}
               style={{
                 padding: '12px 8px',
                 backgroundColor: '#3B9CAA',

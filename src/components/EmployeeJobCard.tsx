@@ -1,7 +1,8 @@
-import { MapPin, Phone, FileText, Camera, MessageCircle, StickyNote, Clipboard, FileEdit, ChevronRight } from 'lucide-react';
+import { MapPin, Phone, FileText, Camera, MessageCircle, StickyNote, Clipboard, FileEdit, ChevronRight, Image as ImageIcon } from 'lucide-react';
 import { useState } from 'react';
 
 interface EmployeeJobCardProps {
+  jobId: string;
   clientName: string;
   status: 'In Progress' | 'Pending' | 'Over Budget' | 'Completed';
   jobType: string;
@@ -14,7 +15,8 @@ interface EmployeeJobCardProps {
   jobCompletePercent: number;
   remainingHours: number;
   onWorkOrder: () => void;
-  onPictures: () => void;
+  onCamera: () => void;       // Opens camera with job pre-selected
+  onViewPhotos: () => void;   // Opens photo gallery for this job
   onMessage: () => void;
   onNotes: () => void;
   onStainSignOff: () => void;
@@ -24,7 +26,10 @@ interface EmployeeJobCardProps {
   onSubmitTime: () => void;
 }
 
+const COMPANYCAM_BLUE = '#0F7BFF';
+
 export function EmployeeJobCard({
+  jobId,
   clientName,
   status,
   jobType,
@@ -37,7 +42,8 @@ export function EmployeeJobCard({
   jobCompletePercent,
   remainingHours,
   onWorkOrder,
-  onPictures,
+  onCamera,
+  onViewPhotos,
   onMessage,
   onNotes,
   onStainSignOff,
@@ -49,7 +55,6 @@ export function EmployeeJobCard({
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
   const FOREST_GREEN = '#4F6A41';
-  const COMPANYCAM_BLUE = '#0F7BFF';
   const SOFT_TEAL = '#3B9CAA';
   const STICKY_YELLOW = '#FBBF24';
   const ALERT_ORANGE = '#E87722';
@@ -114,9 +119,9 @@ export function EmployeeJobCard({
           alignItems: 'center',
           gap: '12px'
         }}>
-          {/* Camera Icon Badge */}
+          {/* Camera Icon Badge - Opens Camera */}
           <button
-            onClick={onPictures}
+            onClick={onCamera}
             style={{
               width: '44px',
               height: '44px',
@@ -259,7 +264,8 @@ export function EmployeeJobCard({
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          marginBottom: '12px'
         }}>
           <h3 style={{
             color: '#FFFFFF',
@@ -271,7 +277,7 @@ export function EmployeeJobCard({
           </h3>
           
           <button
-            onClick={onPictures}
+            onClick={onViewPhotos}
             style={{
               backgroundColor: 'transparent',
               border: 'none',
@@ -289,57 +295,91 @@ export function EmployeeJobCard({
           </button>
         </div>
         
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          overflowX: 'auto',
-          paddingBottom: '8px'
-        }}>
-          {photos.map((photo, index) => (
-            <div
-              key={index}
+        {photos.length > 0 ? (
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            overflowX: 'auto',
+            paddingBottom: '8px',
+            WebkitOverflowScrolling: 'touch' as any
+          }}>
+            {photos.map((photo, index) => (
+              <div
+                key={index}
+                onClick={onViewPhotos}
+                style={{
+                  minWidth: '120px',
+                  height: '120px',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  flexShrink: 0,
+                  border: '2px solid #2A2A2A',
+                  cursor: 'pointer'
+                }}
+              >
+                <img
+                  src={photo.url}
+                  alt={`Photo ${index + 1}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+                
+                {/* Employee Initials Badge */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '6px',
+                  left: '6px',
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  backgroundColor: COMPANYCAM_BLUE,
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  color: '#FFFFFF'
+                }}>
+                  {photo.employeeInitials}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{
+            padding: '30px 20px',
+            textAlign: 'center',
+            backgroundColor: '#252525',
+            borderRadius: '12px'
+          }}>
+            <ImageIcon size={32} color="#3D3D3D" style={{ marginBottom: '8px' }} />
+            <p style={{ color: '#666', fontSize: '14px', margin: '0 0 12px 0' }}>No photos yet</p>
+            <button
+              onClick={onCamera}
               style={{
-                minWidth: '120px',
-                height: '120px',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                position: 'relative',
-                flexShrink: 0,
-                border: '2px solid #2A2A2A'
+                padding: '10px 20px',
+                backgroundColor: COMPANYCAM_BLUE,
+                border: 'none',
+                borderRadius: '8px',
+                color: '#FFFFFF',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
               }}
             >
-              <img
-                src={photo.url}
-                alt={`Photo ${index + 1}`}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover'
-                }}
-              />
-              
-              {/* Employee Initials Badge */}
-              <div style={{
-                position: 'absolute',
-                bottom: '6px',
-                left: '6px',
-                width: '24px',
-                height: '24px',
-                borderRadius: '50%',
-                backgroundColor: COMPANYCAM_BLUE,
-                border: '2px solid rgba(255,255,255,0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '10px',
-                fontWeight: '700',
-                color: '#FFFFFF'
-              }}>
-                {photo.employeeInitials}
-              </div>
-            </div>
-          ))}
-        </div>
+              <Camera size={18} />
+              Take First Photo
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Primary Actions Row */}
@@ -362,13 +402,12 @@ export function EmployeeJobCard({
         
         <ActionButton
           icon={Camera}
-          label="Pictures"
+          label="Take Photo"
           color={COMPANYCAM_BLUE}
-          onClick={onPictures}
+          onClick={onCamera}
           onHover={setHoveredButton}
           isHovered={hoveredButton === 'pictures'}
           id="pictures"
-          badge={photoCount}
         />
         
         <ActionButton

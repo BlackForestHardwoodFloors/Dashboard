@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   X,
   Home,
@@ -15,24 +15,129 @@ import {
   ChevronDown
 } from 'lucide-react';
 
+// Google Maps API key
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+
+// Declare google maps types
+declare global {
+  interface Window {
+    google: typeof google;
+  }
+}
+
+// ZIP to Region mapping for auto-fill
+const ZIP_TO_REGION: { [key: string]: string } = {
+  // Spokane
+  '99201': 'Spokane', '99202': 'Spokane', '99203': 'Spokane', '99204': 'Spokane', '99205': 'Spokane',
+  '99207': 'Spokane', '99208': 'Spokane', '99210': 'Spokane', '99211': 'Spokane', '99213': 'Spokane',
+  '99214': 'Spokane', '99217': 'Spokane', '99218': 'Spokane', '99219': 'Spokane', '99220': 'Spokane',
+  '99223': 'Spokane', '99224': 'Spokane', '99228': 'Spokane',
+  // Spokane Valley
+  '99206': 'Valley', '99212': 'Valley', '99216': 'Valley', '99037': 'Valley',
+  // Liberty Lake
+  '99019': 'Liberty Lake',
+  // Cheney
+  '99004': 'Cheney',
+  // Airway Heights
+  '99001': 'Airway Heights',
+  // Medical Lake
+  '99022': 'Medical Lake',
+  // Deer Park
+  '99006': 'Deer Park',
+  // Mead
+  '99021': 'Mead',
+  // Nine Mile Falls
+  '99026': 'Nine Mile Falls',
+  // Post Falls
+  '83854': 'Post Falls', '83877': 'Post Falls',
+  // Coeur d'Alene
+  '83814': 'CDA', '83815': 'CDA', '83816': 'CDA',
+  // Hayden
+  '83835': 'Hayden',
+  // Rathdrum
+  '83858': 'Rathdrum',
+};
+
 interface BoardroomNewClientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onNavigate?: (page: string, clientData?: any) => void;
+  onClientCreated?: (client: any) => void;
+  onScheduleVisit?: (clientData: { firstName: string; lastName: string; displayName: string; address: string; region: string }) => void;
 }
 
-export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }: BoardroomNewClientModalProps) {
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  
+export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreated, onScheduleVisit }: BoardroomNewClientModalProps) {
   // Section 1: Client Type & Account Info
   const [clientType, setClientType] = useState<'Homeowner' | 'Contractor' | 'Designer' | 'Property Manager' | 'Other'>('Homeowner');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [secondHomeowner, setSecondHomeowner] = useState('');
   const [displayName, setDisplayName] = useState('');
+  
+  // Success message state
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [displayNameManuallyEdited, setDisplayNameManuallyEdited] = useState(false);
   const [status, setStatus] = useState('Lead');
   const [leadSource, setLeadSource] = useState('Referral');
   const [tags, setTags] = useState<string[]>([]);
+
+  // Auto-generate display name based on client type
+  const generateDisplayName = (first: string, last: string, type: string, second?: string) => {
+    const f = first.trim();
+    const l = last.trim();
+    const s = second?.trim();
+    
+    if (!f && !l) return '';
+    
+    // For Contractors - use business name style (First Last or just the name)
+    if (type === 'Contractor') {
+      if (f && l) return `${f} ${l}`;
+      return f || l;
+    }
+    
+    // For Homeowners, Designers, Property Managers - Last, First format
+    if (l && f) {
+      if (s) {
+        return `${l}, ${f} & ${s}`;
+      }
+      return `${l}, ${f}`;
+    }
+    
+    return l || f;
+  };
+
+  // Update display name when first/last name changes (unless manually edited)
+  const handleFirstNameChange = (value: string) => {
+    setFirstName(value);
+    if (!displayNameManuallyEdited) {
+      setDisplayName(generateDisplayName(value, lastName, clientType, secondHomeowner));
+    }
+  };
+
+  const handleLastNameChange = (value: string) => {
+    setLastName(value);
+    if (!displayNameManuallyEdited) {
+      setDisplayName(generateDisplayName(firstName, value, clientType, secondHomeowner));
+    }
+  };
+
+  const handleSecondHomeownerChange = (value: string) => {
+    setSecondHomeowner(value);
+    if (!displayNameManuallyEdited) {
+      setDisplayName(generateDisplayName(firstName, lastName, clientType, value));
+    }
+  };
+
+  const handleClientTypeChange = (type: 'Homeowner' | 'Contractor' | 'Designer' | 'Property Manager' | 'Other') => {
+    setClientType(type);
+    if (!displayNameManuallyEdited) {
+      setDisplayName(generateDisplayName(firstName, lastName, type, secondHomeowner));
+    }
+  };
+
+  const handleDisplayNameChange = (value: string) => {
+    setDisplayName(value);
+    setDisplayNameManuallyEdited(true);
+  };
 
   // Section 2: Primary Contact
   const [contactFirstName, setContactFirstName] = useState('');
@@ -40,32 +145,16 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
   const [phoneNumbers, setPhoneNumbers] = useState<Array<{ number: string; type: string; name?: string }>>([{ number: '', type: 'Mobile', name: '' }]);
   const [emailAddresses, setEmailAddresses] = useState<Array<{ email: string; name?: string }>>([{ email: '', name: '' }]);
   const [role, setRole] = useState('Owner');
-  
-  // Preferred Contact Method - Toggle sliders
-  const [preferPhone, setPreferPhone] = useState(true);
-  const [preferEmail, setPreferEmail] = useState(false);
-  const [preferText, setPreferText] = useState(false);
-  
+  const [preferredContactMethods, setPreferredContactMethods] = useState<string[]>(['Phone']);
   const [isPrimaryContact, setIsPrimaryContact] = useState(true);
   const [grantPortalAccess, setGrantPortalAccess] = useState(false);
   const [receiveSMS, setReceiveSMS] = useState(false);
   const [receiveEmail, setReceiveEmail] = useState(true);
 
   // Section 3: Project / Work Information
-  const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([]);
-  const [availableWorkTypes, setAvailableWorkTypes] = useState<string[]>([
-    'Installation',
-    'Repairs', 
-    'Sand and Finish',
-    'Buff and Recoat'
-  ]);
-  const [customWorkTypeInput, setCustomWorkTypeInput] = useState('');
+  const [typeOfWork, setTypeOfWork] = useState('');
   const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
-  
-  // Notes - Internal and Client-shareable
-  const [internalNotes, setInternalNotes] = useState('');
-  const [clientNotes, setClientNotes] = useState('');
-  const [shareNotesWithClient, setShareNotesWithClient] = useState(false);
+  const [projectNotes, setProjectNotes] = useState('');
 
   // Section 4: Primary Property / Jobsite
   const [propertyNickname, setPropertyNickname] = useState('');
@@ -75,132 +164,156 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
   const [zip, setZip] = useState('');
   const [region, setRegion] = useState('');
   const [billingAddressSame, setBillingAddressSame] = useState(true);
-  const [billingStreetAddress, setBillingStreetAddress] = useState('');
-  const [billingCity, setBillingCity] = useState('');
-  const [billingState, setBillingState] = useState('');
-  const [billingZip, setBillingZip] = useState('');
   const [propertyNotes, setPropertyNotes] = useState('');
+
+  // Google Maps Autocomplete refs
+  const addressInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   
-  // Zip code to region mapping
-  const zipToRegion: Record<string, string> = {
-    '99201': 'Central',
-    '99202': 'Central',
-    '99203': 'South',
-    '99204': 'South West',
-    '99205': 'North West',
-    '99206': 'South East',
-    '99207': 'North East',
-    '99208': 'North',
-    '99212': 'North East',
-    '99216': 'South East',
-    '99217': 'North East',
-    '99218': 'North',
-    '99223': 'South',
-    '99224': 'South West',
-    '99016': 'Spokane Valley',
-    '99027': 'Spokane Valley',
-    '99037': 'Spokane Valley',
-    '99001': 'Airway Heights',
-    '99003': 'Chattaroy',
-    '99004': 'Cheney',
-    '99005': 'Colbert',
-    '99006': 'Deer Park',
-    '99009': 'Elk',
-    '99011': 'Fairchild AFB',
-    '99012': 'Fairfield',
-    '99014': 'Four Lakes',
-    '99018': 'Latah',
-    '99019': 'Liberty Lake',
-    '99020': 'Marshall',
-    '99021': 'Mead',
-    '99022': 'Medical Lake',
-    '99023': 'Mica',
-    '99025': 'Newman Lake',
-    '99026': 'Nine Mile Falls',
-    '99030': 'Rockford',
-    '99031': 'Spangle',
-    '99036': 'Valleyford',
-    '99039': 'Waverly',
-    '83814': 'Coeur d\'Alene, ID',
-    '83815': 'Coeur d\'Alene, ID',
-    '83854': 'Post Falls, ID',
-    '83858': 'Rathdrum, ID'
-  };
+  // Section refs for scrolling to errors
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const section1Ref = useRef<HTMLDivElement>(null);
+  const section2Ref = useRef<HTMLDivElement>(null);
+  const section3Ref = useRef<HTMLDivElement>(null);
+  const section4Ref = useRef<HTMLDivElement>(null);
+  const firstNameRef = useRef<HTMLInputElement>(null);
+  const lastNameRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
 
-  // Get unique regions for dropdown
-  const availableRegions = [...new Set(Object.values(zipToRegion))].sort();
-
-  // Auto-fill region when zip code changes
-  const handleZipChange = (newZip: string) => {
-    setZip(newZip);
-    const cleanZip = newZip.trim();
-    if (zipToRegion[cleanZip]) {
-      setRegion(zipToRegion[cleanZip]);
+  // Initialize Google Maps Autocomplete
+  const initAutocomplete = useCallback(() => {
+    if (!addressInputRef.current) {
+      console.log('Google Maps: Address input ref not ready');
+      return;
     }
-  };
-  
-  // Saving state
-  const [saving, setSaving] = useState(false);
-
-  // Auto-generate display name based on client type
-  const generateDisplayName = () => {
-    if (clientType === 'Contractor' || clientType === 'Designer' || clientType === 'Property Manager') {
-      // For business types, could use company name if available, otherwise last name first
-      return lastName ? `${lastName}${firstName ? ', ' + firstName : ''}` : firstName;
-    } else {
-      // For homeowners: "Last, First" or "Last, First & Second"
-      if (lastName) {
-        let name = lastName;
-        if (firstName) {
-          name += `, ${firstName}`;
-          if (secondHomeowner) {
-            name += ` & ${secondHomeowner}`;
+    if (!window.google?.maps?.places) {
+      console.log('Google Maps: Places API not loaded yet');
+      return;
+    }
+    
+    console.log('Google Maps: Initializing autocomplete...');
+    
+    // Remove any existing autocomplete
+    if (autocompleteRef.current) {
+      google.maps.event.clearInstanceListeners(autocompleteRef.current);
+    }
+    
+    try {
+      autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
+        componentRestrictions: { country: 'us' },
+        types: ['address'],
+        fields: ['address_components', 'formatted_address', 'geometry']
+      });
+      
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current?.getPlace();
+        if (!place?.address_components) return;
+        
+        let streetNumber = '';
+        let route = '';
+        let cityValue = '';
+        let stateValue = '';
+        let zipValue = '';
+        
+        for (const component of place.address_components) {
+          const type = component.types[0];
+          switch (type) {
+            case 'street_number':
+              streetNumber = component.long_name;
+              break;
+            case 'route':
+              route = component.long_name;
+              break;
+            case 'locality':
+              cityValue = component.long_name;
+              break;
+            case 'administrative_area_level_1':
+              stateValue = component.short_name;
+              break;
+            case 'postal_code':
+              zipValue = component.long_name;
+              break;
           }
         }
-        return name;
+        
+        // Set address fields
+        setStreetAddress(`${streetNumber} ${route}`.trim());
+        setCity(cityValue);
+        setState(stateValue);
+        setZip(zipValue);
+        
+        // Auto-fill region based on ZIP
+        if (zipValue && ZIP_TO_REGION[zipValue]) {
+          setRegion(ZIP_TO_REGION[zipValue]);
+        }
+      });
+      
+      console.log('Google Maps: Autocomplete initialized successfully');
+    } catch (error) {
+      console.error('Google Maps: Error initializing autocomplete:', error);
+    }
+  }, []);
+
+  // Load Google Maps script and initialize autocomplete
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const loadGoogleMaps = () => {
+      // Check if already loaded
+      if (window.google?.maps?.places) {
+        console.log('Google Maps: Already loaded, initializing...');
+        initAutocomplete();
+        return;
       }
-      return firstName || '';
+      
+      // Check for API key
+      if (!GOOGLE_MAPS_API_KEY) {
+        console.warn('Google Maps: No API key found. Set VITE_GOOGLE_MAPS_API_KEY in your .env file');
+        return;
+      }
+      
+      console.log('Google Maps: Loading script...');
+      
+      const existingScript = document.getElementById('google-maps-script');
+      if (!existingScript) {
+        const script = document.createElement('script');
+        script.id = 'google-maps-script';
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+          console.log('Google Maps: Script loaded');
+          initAutocomplete();
+        };
+        script.onerror = () => {
+          console.error('Google Maps: Failed to load script. Check your API key and billing.');
+        };
+        document.head.appendChild(script);
+      } else {
+        // Script exists but not loaded yet, wait for it
+        const checkLoaded = setInterval(() => {
+          if (window.google?.maps?.places) {
+            clearInterval(checkLoaded);
+            initAutocomplete();
+          }
+        }, 100);
+        // Clear after 10 seconds
+        setTimeout(() => clearInterval(checkLoaded), 10000);
+      }
+    };
+    
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(loadGoogleMaps, 100);
+    return () => clearTimeout(timer);
+  }, [isOpen, initAutocomplete]);
+
+  // Re-initialize autocomplete when input ref changes
+  useEffect(() => {
+    if (isOpen && addressInputRef.current && window.google?.maps?.places) {
+      initAutocomplete();
     }
-  };
-
-  // Auto-sync Primary Contact name with Client Account Info (always sync)
-  React.useEffect(() => {
-    setContactFirstName(firstName);
-  }, [firstName]);
-
-  React.useEffect(() => {
-    setContactLastName(lastName);
-  }, [lastName]);
-
-  // Update display name when relevant fields change
-  React.useEffect(() => {
-    const autoName = generateDisplayName();
-    if (autoName) {
-      setDisplayName(autoName);
-    }
-  }, [firstName, lastName, secondHomeowner, clientType]);
-
-  // Toggle work type selection
-  const toggleWorkType = (workType: string) => {
-    if (selectedWorkTypes.includes(workType)) {
-      setSelectedWorkTypes(selectedWorkTypes.filter(t => t !== workType));
-    } else {
-      setSelectedWorkTypes([...selectedWorkTypes, workType]);
-    }
-  };
-
-  // Add custom work type
-  const addCustomWorkType = () => {
-    const trimmed = customWorkTypeInput.trim();
-    if (trimmed && !availableWorkTypes.includes(trimmed)) {
-      setAvailableWorkTypes([...availableWorkTypes, trimmed]);
-      setSelectedWorkTypes([...selectedWorkTypes, trimmed]);
-      setCustomWorkTypeInput('');
-    } else if (trimmed && !selectedWorkTypes.includes(trimmed)) {
-      setSelectedWorkTypes([...selectedWorkTypes, trimmed]);
-      setCustomWorkTypeInput('');
-    }
-  };
+  }, [isOpen, initAutocomplete]);
 
   const roomOptions = [
     'Entry',
@@ -240,6 +353,10 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
   ]);
   const [newTagInput, setNewTagInput] = useState('');
 
+  // Validation state - now stores error objects with scroll targets
+  const [validationErrors, setValidationErrors] = useState<Array<{ message: string; field: string; ref?: React.RefObject<HTMLElement> }>>([]);
+  const [showValidationError, setShowValidationError] = useState(false);
+
   const toggleTag = (tag: string) => {
     if (tags.includes(tag)) {
       setTags(tags.filter(t => t !== tag));
@@ -270,216 +387,211 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
     }
   };
 
-  // Build client data object matching Contact model
-  const buildClientData = () => {
-    return {
-      // Required fields
-      firstName: firstName || contactFirstName,
-      phone: phoneNumbers[0]?.number || '',
-      operationsManager: 2, // Default to Admin User
-      createdBy: 'Admin',
-      modifiedBy: 'Admin',
-      
-      // Optional fields
-      lastName: lastName || contactLastName || '',
-      email: emailAddresses[0]?.email || '',
-      companyName: clientType === 'Contractor' ? displayName : '',
-      additionalPhone: phoneNumbers[1]?.number || '',
-      message: internalNotes || '',
-      clientSource: clientType === 'Contractor' ? 'Contractor' : 'Direct',
-      clientDetailsAvailability: 'Yes',
-      doNotSendEmail: !receiveEmail,
-      
-      // Extra data for future use (stored in message or separate table)
-      // These won't cause errors but may not be saved unless backend supports them
-      displayName: displayName || generateDisplayName(),
-      clientType,
-      secondHomeowner,
-      status,
-      leadSource,
-      tags,
-      preferPhone,
-      preferEmail,
-      preferText,
-      workTypes: selectedWorkTypes,
-      rooms: selectedRooms,
-      clientNotes: shareNotesWithClient ? clientNotes : '',
-      propertyNickname,
-      address: streetAddress,
-      city,
-      state,
-      zipCode: zip,
-      region,
-      billingAddressSame,
-      billingStreetAddress: billingAddressSame ? streetAddress : billingStreetAddress,
-      billingCity: billingAddressSame ? city : billingCity,
-      billingState: billingAddressSame ? state : billingState,
-      billingZip: billingAddressSame ? zip : billingZip,
-      propertyNotes
-    };
+  // Validation error type with scroll target
+  interface ValidationError {
+    message: string;
+    field: string;
+    ref?: React.RefObject<HTMLElement>;
+  }
+
+  // Validation function - returns errors with scroll targets
+  const validateForm = (): ValidationError[] => {
+    const errors: ValidationError[] = [];
+    
+    // Required fields - Section 1
+    if (!firstName.trim()) errors.push({ message: 'First Name is required', field: 'firstName', ref: firstNameRef as React.RefObject<HTMLElement> });
+    if (!lastName.trim()) errors.push({ message: 'Last Name is required', field: 'lastName', ref: lastNameRef as React.RefObject<HTMLElement> });
+    if (!displayName.trim()) errors.push({ message: 'Display Name is required', field: 'displayName', ref: section1Ref as React.RefObject<HTMLElement> });
+    
+    // Contact info - at least one phone or email (Section 2)
+    const hasPhone = phoneNumbers.some(p => p.number.trim() !== '');
+    const hasEmail = emailAddresses.some(e => e.email.trim() !== '');
+    if (!hasPhone && !hasEmail) {
+      errors.push({ message: 'At least one phone number or email is required', field: 'contact', ref: phoneRef as React.RefObject<HTMLElement> });
+    }
+    
+    // Validate phone format if provided
+    phoneNumbers.forEach((phone, index) => {
+      if (phone.number.trim() && !/^[\d\s\-\(\)\+]{7,}$/.test(phone.number.trim())) {
+        errors.push({ message: `Phone ${index + 1} has invalid format`, field: 'phone', ref: phoneRef as React.RefObject<HTMLElement> });
+      }
+    });
+    
+    // Validate email format if provided
+    emailAddresses.forEach((email, index) => {
+      if (email.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.email.trim())) {
+        errors.push({ message: `Email ${index + 1} has invalid format`, field: 'email', ref: emailRef as React.RefObject<HTMLElement> });
+      }
+    });
+    
+    // Property info - Section 4
+    if (!streetAddress.trim()) errors.push({ message: 'Street Address is required', field: 'streetAddress', ref: addressInputRef as React.RefObject<HTMLElement> });
+    if (!city.trim()) errors.push({ message: 'City is required', field: 'city', ref: section4Ref as React.RefObject<HTMLElement> });
+    if (!state.trim()) errors.push({ message: 'State is required', field: 'state', ref: section4Ref as React.RefObject<HTMLElement> });
+    if (!zip.trim()) errors.push({ message: 'ZIP code is required', field: 'zip', ref: section4Ref as React.RefObject<HTMLElement> });
+    
+    return errors;
   };
 
-  // Save client to database
-  const saveClient = async () => {
-    setSaving(true);
-    try {
-      const token = localStorage.getItem('token');
-      const clientData = buildClientData();
+  // Scroll to error field
+  const scrollToError = (error: ValidationError) => {
+    if (error.ref?.current && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const element = error.ref.current;
       
-      console.log('Sending client data:', clientData);
+      // Calculate position relative to scroll container
+      const containerRect = container.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      const scrollTop = container.scrollTop + (elementRect.top - containerRect.top) - 100; // 100px offset from top
       
-      // Step 1: Create the contact
-      const response = await fetch(`${API_URL}/contact/create-contact`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(clientData)
+      container.scrollTo({
+        top: scrollTop,
+        behavior: 'smooth'
       });
       
-      const data = await response.json();
-      console.log('API Response:', response.status, data);
-      
-      if (response.ok) {
-        const contactId = data.data?.id || data.id;
-        
-        // Step 2: Save additional phone numbers
-        const validPhones = phoneNumbers.filter(p => p.number && p.number.trim());
-        if (validPhones.length > 0 && contactId) {
-          try {
-            await fetch(`${API_URL}/contact-phone/create-bulk`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                contactId,
-                phones: validPhones.map((p, index) => ({
-                  name: p.name || null,
-                  number: p.number,
-                  type: p.type || 'Mobile',
-                  isPrimary: index === 0,
-                  receiveSMS: true
-                }))
-              })
-            });
-            console.log('Phone numbers saved');
-          } catch (phoneError) {
-            console.warn('Could not save additional phones:', phoneError);
-          }
-        }
-        
-        // Step 3: Save additional email addresses
-        const validEmails = emailAddresses.filter(e => e.email && e.email.trim());
-        if (validEmails.length > 0 && contactId) {
-          try {
-            await fetch(`${API_URL}/contact-email/create-bulk`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                contactId,
-                emails: validEmails.map((e, index) => ({
-                  name: e.name || null,
-                  email: e.email,
-                  isPrimary: index === 0,
-                  receiveNotifications: true
-                }))
-              })
-            });
-            console.log('Email addresses saved');
-          } catch (emailError) {
-            console.warn('Could not save additional emails:', emailError);
-          }
-        }
-        
-        return { success: true, client: data, contactId };
-      } else {
-        console.error('Failed to save client:', data);
-        alert(`Error: ${data.message || data.error || 'Failed to save client'}`);
-        return { success: false };
+      // Focus the element if it's an input
+      if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+        setTimeout(() => element.focus(), 300);
       }
-    } catch (error) {
-      console.error('Error saving client:', error);
-      alert('Network error - please try again');
-      return { success: false };
-    } finally {
-      setSaving(false);
+      
+      // Flash highlight effect
+      element.style.transition = 'box-shadow 0.3s ease';
+      element.style.boxShadow = '0 0 0 3px rgba(231, 76, 60, 0.5)';
+      setTimeout(() => {
+        element.style.boxShadow = '';
+      }, 2000);
     }
   };
 
-  // Handle Save Client button
-  const handleSaveClient = async () => {
-    // Validation
-    const clientFirstName = firstName || contactFirstName;
-    const clientPhone = phoneNumbers[0]?.number || '';
+  // Handle save with validation
+  const handleSave = (action: 'save' | 'quote' | 'visit') => {
+    const errors = validateForm();
     
-    if (!clientFirstName.trim()) {
-      alert('Please enter a First Name');
-      return;
-    }
-    if (!clientPhone.trim()) {
-      alert('Please enter a Phone Number');
-      return;
-    }
-    
-    const result = await saveClient();
-    if (result.success) {
-      onClose();
-    }
-  };
-
-  // Handle Save & Create Quote button
-  const handleSaveAndCreateQuote = async () => {
-    // Validation
-    const clientFirstName = firstName || contactFirstName;
-    const clientPhone = phoneNumbers[0]?.number || '';
-    
-    if (!clientFirstName.trim()) {
-      alert('Please enter a First Name');
-      return;
-    }
-    if (!clientPhone.trim()) {
-      alert('Please enter a Phone Number');
-      return;
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      setShowValidationError(true);
+      // Auto-hide after 10 seconds
+      setTimeout(() => setShowValidationError(false), 10000);
+      // Scroll to first error
+      if (errors[0]) {
+        setTimeout(() => scrollToError(errors[0]), 100);
+      }
+      return false;
     }
     
-    const result = await saveClient();
-    if (result.success && onNavigate) {
-      onClose();
-      onNavigate('Quotes', buildClientData());
-    }
-  };
-
-  // Handle Save & Schedule Visit button
-  const handleSaveAndScheduleVisit = async () => {
-    // Validation
-    const clientFirstName = firstName || contactFirstName;
-    const clientPhone = phoneNumbers[0]?.number || '';
+    setShowValidationError(false);
+    setValidationErrors([]);
     
-    if (!clientFirstName.trim()) {
-      alert('Please enter a First Name');
-      return;
-    }
-    if (!clientPhone.trim()) {
-      alert('Please enter a Phone Number');
-      return;
+    // TODO: Implement actual API save logic here
+    console.log('Saving client...', { action, firstName, lastName, displayName, preferredContactMethods });
+    
+    // Build full address
+    const fullAddress = `${streetAddress}, ${city}, ${state} ${zip}`;
+    
+    // Get primary phone and email for the client record
+    const primaryPhone = phoneNumbers.find(p => p.number.trim())?.number || '';
+    const primaryEmail = emailAddresses.find(e => e.email.trim())?.email || '';
+    
+    if (action === 'save') {
+      // Show success message, stay on modal
+      setSaveSuccess('Client saved successfully!');
+      setTimeout(() => setSaveSuccess(null), 4000);
+      
+      // Call onClientCreated if provided
+      if (onClientCreated) {
+        onClientCreated({
+          id: Date.now(), // Temporary ID until API returns real one
+          firstName,
+          lastName,
+          displayName,
+          phone: primaryPhone,
+          email: primaryEmail,
+          address: fullAddress,
+          region,
+          preferredContactMethods
+        });
+      }
+    } else if (action === 'quote') {
+      // Show success message for quote
+      setSaveSuccess('Client saved! Opening quote creator...');
+      setTimeout(() => {
+        setSaveSuccess(null);
+        // TODO: Navigate to quote creator
+      }, 2000);
+    } else if (action === 'visit') {
+      // Close modal and open calendar with client data
+      setSaveSuccess('Client saved! Opening scheduler...');
+      setTimeout(() => {
+        setSaveSuccess(null);
+        onClose();
+        if (onScheduleVisit) {
+          onScheduleVisit({
+            firstName,
+            lastName,
+            displayName,
+            address: fullAddress,
+            region
+          });
+        }
+      }, 1000);
     }
     
-    const result = await saveClient();
-    if (result.success && onNavigate) {
-      onClose();
-      onNavigate('Calendar', buildClientData());
-    }
+    return true;
   };
 
   if (!isOpen) return null;
 
   return (
+    <>
+      {/* Google Places Autocomplete Dark Theme Styles */}
+      <style>{`
+        .pac-container {
+          background-color: #2C2D2E !important;
+          border: 1px solid #3A3A3B !important;
+          border-radius: 10px !important;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
+          margin-top: 4px !important;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        }
+        .pac-item {
+          background-color: #2C2D2E !important;
+          color: #FFFFFF !important;
+          padding: 10px 14px !important;
+          border-top: 1px solid #3A3A3B !important;
+          cursor: pointer !important;
+          font-size: 14px !important;
+        }
+        .pac-item:first-child {
+          border-top: none !important;
+        }
+        .pac-item:hover {
+          background-color: #3D4435 !important;
+        }
+        .pac-item-selected {
+          background-color: #3D4435 !important;
+        }
+        .pac-item-query {
+          color: #FFFFFF !important;
+          font-size: 14px !important;
+        }
+        .pac-matched {
+          color: #C9A049 !important;
+          font-weight: 600 !important;
+        }
+        .pac-icon {
+          filter: invert(1) !important;
+        }
+        .pac-icon-marker {
+          filter: invert(1) brightness(0.8) sepia(1) hue-rotate(10deg) saturate(5) !important;
+        }
+        .hdpi.pac-logo::after {
+          background-image: none !important;
+          display: none !important;
+        }
+        .pac-logo::after {
+          display: none !important;
+        }
+      `}</style>
     <div 
       style={{
         position: 'fixed',
@@ -568,6 +680,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
 
         {/* SCROLLABLE BODY */}
         <div 
+          ref={scrollContainerRef}
           style={{
             flex: 1,
             overflowY: 'auto',
@@ -578,7 +691,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
           }}
         >
           {/* SECTION 1: Client Type & Account Info */}
-          <div style={{
+          <div ref={section1Ref} style={{
             backgroundColor: '#232425',
             borderRadius: '14px',
             padding: '24px',
@@ -623,7 +736,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                   return (
                     <button
                       key={option.value}
-                      onClick={() => setClientType(option.value as any)}
+                      onClick={() => handleClientTypeChange(option.value as any)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -677,10 +790,11 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                   First Name <span style={{ color: '#C9A049' }}>*</span>
                 </label>
                 <input
+                  ref={firstNameRef}
                   type="text"
                   placeholder="Lisa"
                   value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  onChange={(e) => handleFirstNameChange(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '11px 14px',
@@ -712,10 +826,11 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                   Last Name <span style={{ color: '#C9A049' }}>*</span>
                 </label>
                 <input
+                  ref={lastNameRef}
                   type="text"
                   placeholder="Anderson"
                   value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  onChange={(e) => handleLastNameChange(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '11px 14px',
@@ -752,7 +867,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                 type="text"
                 placeholder="e.g., John"
                 value={secondHomeowner}
-                onChange={(e) => setSecondHomeowner(e.target.value)}
+                onChange={(e) => handleSecondHomeownerChange(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '11px 14px',
@@ -783,12 +898,15 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                 marginBottom: '8px'
               }}>
                 Display Name <span style={{ color: '#C9A049' }}>*</span>
+                {!displayNameManuallyEdited && (
+                  <span style={{ color: '#666', fontSize: '11px', marginLeft: '8px' }}>(auto-generated)</span>
+                )}
               </label>
               <input
                 type="text"
-                placeholder="Lisa & John Anderson"
+                placeholder={clientType === 'Contractor' ? 'Business Name' : 'Last, First'}
                 value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                onChange={(e) => handleDisplayNameChange(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '11px 14px',
@@ -1039,7 +1157,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
           </div>
 
           {/* SECTION 2: Primary Contact */}
-          <div style={{
+          <div ref={section2Ref} style={{
             backgroundColor: '#232425',
             borderRadius: '14px',
             padding: '24px',
@@ -1170,37 +1288,37 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
                 {phoneNumbers.map((phone, index) => (
                   <div key={index} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    {/* Show name field only for 2nd+ phone numbers */}
-                    {phoneNumbers.length > 1 && (
-                      <input
-                        type="text"
-                        placeholder="Name"
-                        value={phone.name || ''}
-                        onChange={(e) => {
-                          const newPhoneNumbers = [...phoneNumbers];
-                          newPhoneNumbers[index].name = e.target.value;
-                          setPhoneNumbers(newPhoneNumbers);
-                        }}
-                        style={{
-                          width: '150px',
-                          padding: '11px 14px',
-                          backgroundColor: '#2C2D2E',
-                          border: '1px solid #3A3A3B',
-                          borderRadius: '10px',
-                          color: '#FFFFFF',
-                          fontSize: '14px',
-                          outline: 'none',
-                          transition: 'all 0.15s ease-in-out'
-                        }}
-                        onFocus={(e) => {
-                          e.target.style.borderColor = '#5EB77D';
-                        }}
-                        onBlur={(e) => {
-                          e.target.style.borderColor = '#3A3A3B';
-                        }}
-                      />
-                    )}
+                    {/* Contact name field - auto-filled from firstName for first entry */}
                     <input
+                      type="text"
+                      placeholder="Contact"
+                      value={phone.name || (index === 0 ? firstName : '')}
+                      onChange={(e) => {
+                        const newPhoneNumbers = [...phoneNumbers];
+                        newPhoneNumbers[index].name = e.target.value;
+                        setPhoneNumbers(newPhoneNumbers);
+                      }}
+                      style={{
+                        width: '150px',
+                        padding: '11px 14px',
+                        backgroundColor: phone.name || (index === 0 && firstName) ? '#3D4435' : '#2C2D2E',
+                        border: phone.name || (index === 0 && firstName) ? '1px solid #5EB77D' : '1px solid #3A3A3B',
+                        borderRadius: '10px',
+                        color: '#FFFFFF',
+                        fontSize: '14px',
+                        outline: 'none',
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#5EB77D';
+                      }}
+                      onBlur={(e) => {
+                        const hasValue = phone.name || (index === 0 && firstName);
+                        e.target.style.borderColor = hasValue ? '#5EB77D' : '#3A3A3B';
+                      }}
+                    />
+                    <input
+                      ref={index === 0 ? phoneRef : undefined}
                       type="text"
                       placeholder="e.g., 123-456-7890"
                       value={phone.number}
@@ -1341,37 +1459,37 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
                 {emailAddresses.map((email, index) => (
                   <div key={index} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    {/* Show name field only for 2nd+ emails */}
-                    {emailAddresses.length > 1 && (
-                      <input
-                        type="text"
-                        placeholder="Name"
-                        value={email.name || ''}
-                        onChange={(e) => {
-                          const newEmailAddresses = [...emailAddresses];
-                          newEmailAddresses[index].name = e.target.value;
-                          setEmailAddresses(newEmailAddresses);
-                        }}
-                        style={{
-                          width: '150px',
-                          padding: '11px 14px',
-                          backgroundColor: '#2C2D2E',
-                          border: '1px solid #3A3A3B',
-                          borderRadius: '10px',
-                          color: '#FFFFFF',
-                          fontSize: '14px',
-                          outline: 'none',
-                          transition: 'all 0.15s ease-in-out'
-                        }}
-                        onFocus={(e) => {
-                          e.target.style.borderColor = '#5EB77D';
-                        }}
-                        onBlur={(e) => {
-                          e.target.style.borderColor = '#3A3A3B';
-                        }}
-                      />
-                    )}
+                    {/* Contact name field - auto-filled from firstName for first entry */}
                     <input
+                      type="text"
+                      placeholder="Contact"
+                      value={email.name || (index === 0 ? firstName : '')}
+                      onChange={(e) => {
+                        const newEmailAddresses = [...emailAddresses];
+                        newEmailAddresses[index].name = e.target.value;
+                        setEmailAddresses(newEmailAddresses);
+                      }}
+                      style={{
+                        width: '150px',
+                        padding: '11px 14px',
+                        backgroundColor: email.name || (index === 0 && firstName) ? '#3D4435' : '#2C2D2E',
+                        border: email.name || (index === 0 && firstName) ? '1px solid #5EB77D' : '1px solid #3A3A3B',
+                        borderRadius: '10px',
+                        color: '#FFFFFF',
+                        fontSize: '14px',
+                        outline: 'none',
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#5EB77D';
+                      }}
+                      onBlur={(e) => {
+                        const hasValue = email.name || (index === 0 && firstName);
+                        e.target.style.borderColor = hasValue ? '#5EB77D' : '#3A3A3B';
+                      }}
+                    />
+                    <input
+                      ref={index === 0 ? emailRef : undefined}
                       type="email"
                       placeholder="e.g., example@example.com"
                       value={email.email}
@@ -1485,7 +1603,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
               </div>
             </div>
 
-            {/* Preferred Contact Method - Toggle Sliders */}
+            {/* Preferred Contact Method */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{
                 display: 'block',
@@ -1495,126 +1613,64 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                 marginBottom: '12px'
               }}>
                 Preferred Contact Method <span style={{ color: '#C9A049' }}>*</span>
+                <span style={{ color: '#7A7A7A', fontWeight: '400', marginLeft: '8px', fontSize: '12px' }}>(select all that apply)</span>
               </label>
-              <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-                {/* Phone Toggle */}
-                <div 
-                  onClick={() => setPreferPhone(!preferPhone)}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '12px',
-                    cursor: 'pointer',
-                    padding: '10px 16px',
-                    backgroundColor: preferPhone ? 'rgba(94, 183, 125, 0.15)' : '#2C2D2E',
-                    border: `2px solid ${preferPhone ? '#5EB77D' : '#3A3A3B'}`,
-                    borderRadius: '10px',
-                    transition: 'all 0.15s ease-in-out'
-                  }}
-                >
-                  <Phone size={18} color={preferPhone ? '#5EB77D' : '#7A7A7A'} />
-                  <span style={{ color: preferPhone ? '#FFFFFF' : '#A5A5A5', fontSize: '14px', fontWeight: '500' }}>Phone</span>
-                  <div style={{
-                    width: '44px',
-                    height: '24px',
-                    backgroundColor: preferPhone ? '#5EB77D' : '#3A3A3B',
-                    borderRadius: '12px',
-                    position: 'relative',
-                    transition: 'all 0.2s ease-in-out'
-                  }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: '50%',
-                      position: 'absolute',
-                      top: '2px',
-                      left: preferPhone ? '22px' : '2px',
-                      transition: 'all 0.2s ease-in-out',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }} />
-                  </div>
-                </div>
-
-                {/* Email Toggle */}
-                <div 
-                  onClick={() => setPreferEmail(!preferEmail)}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '12px',
-                    cursor: 'pointer',
-                    padding: '10px 16px',
-                    backgroundColor: preferEmail ? 'rgba(94, 183, 125, 0.15)' : '#2C2D2E',
-                    border: `2px solid ${preferEmail ? '#5EB77D' : '#3A3A3B'}`,
-                    borderRadius: '10px',
-                    transition: 'all 0.15s ease-in-out'
-                  }}
-                >
-                  <Mail size={18} color={preferEmail ? '#5EB77D' : '#7A7A7A'} />
-                  <span style={{ color: preferEmail ? '#FFFFFF' : '#A5A5A5', fontSize: '14px', fontWeight: '500' }}>Email</span>
-                  <div style={{
-                    width: '44px',
-                    height: '24px',
-                    backgroundColor: preferEmail ? '#5EB77D' : '#3A3A3B',
-                    borderRadius: '12px',
-                    position: 'relative',
-                    transition: 'all 0.2s ease-in-out'
-                  }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: '50%',
-                      position: 'absolute',
-                      top: '2px',
-                      left: preferEmail ? '22px' : '2px',
-                      transition: 'all 0.2s ease-in-out',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }} />
-                  </div>
-                </div>
-
-                {/* Text Toggle */}
-                <div 
-                  onClick={() => setPreferText(!preferText)}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '12px',
-                    cursor: 'pointer',
-                    padding: '10px 16px',
-                    backgroundColor: preferText ? 'rgba(94, 183, 125, 0.15)' : '#2C2D2E',
-                    border: `2px solid ${preferText ? '#5EB77D' : '#3A3A3B'}`,
-                    borderRadius: '10px',
-                    transition: 'all 0.15s ease-in-out'
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={preferText ? '#5EB77D' : '#7A7A7A'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                  <span style={{ color: preferText ? '#FFFFFF' : '#A5A5A5', fontSize: '14px', fontWeight: '500' }}>Text</span>
-                  <div style={{
-                    width: '44px',
-                    height: '24px',
-                    backgroundColor: preferText ? '#5EB77D' : '#3A3A3B',
-                    borderRadius: '12px',
-                    position: 'relative',
-                    transition: 'all 0.2s ease-in-out'
-                  }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: '50%',
-                      position: 'absolute',
-                      top: '2px',
-                      left: preferText ? '22px' : '2px',
-                      transition: 'all 0.2s ease-in-out',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }} />
-                  </div>
-                </div>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                {[
+                  { value: 'Phone', icon: Phone, label: 'Phone Call' },
+                  { value: 'SMS', icon: Phone, label: 'Text / SMS' },
+                  { value: 'Email', icon: Mail, label: 'Email' }
+                ].map((option) => {
+                  const isSelected = preferredContactMethods.includes(option.value);
+                  const IconComponent = option.icon;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        setPreferredContactMethods(prev => {
+                          if (prev.includes(option.value)) {
+                            // Remove if already selected (but keep at least one)
+                            const newMethods = prev.filter(m => m !== option.value);
+                            return newMethods.length > 0 ? newMethods : prev;
+                          } else {
+                            // Add if not selected
+                            return [...prev, option.value];
+                          }
+                        });
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '12px 20px',
+                        backgroundColor: isSelected ? '#5EB77D' : 'transparent',
+                        border: `2px solid ${isSelected ? '#5EB77D' : '#3A3A3B'}`,
+                        borderRadius: '10px',
+                        color: isSelected ? '#FFFFFF' : '#A5A5A5',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = '#5EB77D';
+                          e.currentTarget.style.color = '#FFFFFF';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = '#3A3A3B';
+                          e.currentTarget.style.color = '#A5A5A5';
+                        }
+                      }}
+                    >
+                      <IconComponent size={18} />
+                      {option.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -1828,7 +1884,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
           </div>
 
           {/* SECTION 3: Project / Work Information */}
-          <div style={{
+          <div ref={section3Ref} style={{
             backgroundColor: '#232425',
             borderRadius: '14px',
             padding: '24px',
@@ -1843,7 +1899,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
               Project / Work Information
             </h3>
 
-            {/* Type of Work - Multi-select chips */}
+            {/* Type of Work */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{
                 display: 'block',
@@ -1857,29 +1913,36 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
               <div style={{
                 display: 'flex',
                 gap: '10px',
-                flexWrap: 'wrap',
-                marginBottom: '12px'
+                flexWrap: 'wrap'
               }}>
-                {availableWorkTypes.map((workType) => {
-                  const isSelected = selectedWorkTypes.includes(workType);
+                {[
+                  'Repairs',
+                  'Touchup',
+                  'Install',
+                  'Sand and Finish',
+                  'Buff and Recoat'
+                ].map((workType) => {
+                  const isSelected = typeOfWork === workType;
+                  
                   return (
                     <button
                       key={workType}
-                      onClick={() => toggleWorkType(workType)}
+                      type="button"
+                      onClick={() => setTypeOfWork(workType)}
                       style={{
-                        padding: '8px 16px',
-                        backgroundColor: isSelected ? '#C9A049' : 'transparent',
-                        color: isSelected ? '#1B1C1D' : '#A5A5A5',
-                        border: `2px solid ${isSelected ? '#C9A049' : '#3A3A3B'}`,
-                        borderRadius: '20px',
-                        fontSize: '13px',
+                        padding: '10px 18px',
+                        backgroundColor: isSelected ? '#5EB77D' : 'transparent',
+                        border: `2px solid ${isSelected ? '#5EB77D' : '#3A3A3B'}`,
+                        borderRadius: '10px',
+                        color: isSelected ? '#FFFFFF' : '#A5A5A5',
+                        fontSize: '14px',
                         fontWeight: '600',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease-in-out'
                       }}
                       onMouseEnter={(e) => {
                         if (!isSelected) {
-                          e.currentTarget.style.borderColor = '#C9A049';
+                          e.currentTarget.style.borderColor = '#5EB77D';
                           e.currentTarget.style.color = '#FFFFFF';
                         }
                       }}
@@ -1894,67 +1957,6 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                     </button>
                   );
                 })}
-              </div>
-              
-              {/* Add Custom Work Type */}
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <input
-                  type="text"
-                  placeholder="Add custom work type..."
-                  value={customWorkTypeInput}
-                  onChange={(e) => setCustomWorkTypeInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addCustomWorkType();
-                    }
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '11px 14px',
-                    backgroundColor: '#2C2D2E',
-                    border: '1px solid #3A3A3B',
-                    borderRadius: '10px',
-                    color: '#FFFFFF',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.15s ease-in-out'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#5EB77D';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#3A3A3B';
-                  }}
-                />
-                <button
-                  onClick={addCustomWorkType}
-                  style={{
-                    padding: '11px 16px',
-                    backgroundColor: 'transparent',
-                    border: '2px solid #5EB77D',
-                    borderRadius: '10px',
-                    color: '#5EB77D',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease-in-out',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#5EB77D';
-                    e.currentTarget.style.color = '#1B1C1D';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = '#5EB77D';
-                  }}
-                >
-                  <Plus size={16} />
-                  Add
-                </button>
               </div>
             </div>
 
@@ -2139,7 +2141,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
               </div>
             </div>
 
-            {/* Internal Notes */}
+            {/* Project Notes */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{
                 display: 'block',
@@ -2148,12 +2150,12 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                 fontWeight: '500',
                 marginBottom: '8px'
               }}>
-                Internal Notes <span style={{ color: '#7A7A7A', fontSize: '12px' }}>(staff only - visible sitewide)</span>
+                Project Notes <span style={{ color: '#7A7A7A', fontSize: '12px' }}>(optional)</span>
               </label>
               <textarea
-                placeholder="Add internal notes about this client..."
-                value={internalNotes}
-                onChange={(e) => setInternalNotes(e.target.value)}
+                placeholder="Add any additional notes about the project..."
+                value={projectNotes}
+                onChange={(e) => setProjectNotes(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '11px 14px',
@@ -2164,8 +2166,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                   fontSize: '14px',
                   outline: 'none',
                   transition: 'all 0.15s ease-in-out',
-                  resize: 'vertical',
-                  minHeight: '80px'
+                  resize: 'vertical'
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#5EB77D';
@@ -2174,109 +2175,11 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                   e.target.style.borderColor = '#3A3A3B';
                 }}
               />
-              <p style={{
-                color: '#E67E22',
-                fontSize: '12px',
-                margin: '6px 0 0 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-                These notes are for internal use only and will NOT be shared with the client.
-              </p>
-            </div>
-
-            {/* Client-Shareable Notes */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <label style={{
-                  color: '#A5A5A5',
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  Client Notes <span style={{ color: '#7A7A7A', fontSize: '12px' }}>(can be shared to portal)</span>
-                </label>
-                <div 
-                  onClick={() => setShareNotesWithClient(!shareNotesWithClient)}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '8px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <span style={{ color: shareNotesWithClient ? '#5EB77D' : '#7A7A7A', fontSize: '12px' }}>
-                    {shareNotesWithClient ? 'Sharing to portal' : 'Not shared'}
-                  </span>
-                  <div style={{
-                    width: '36px',
-                    height: '20px',
-                    backgroundColor: shareNotesWithClient ? '#5EB77D' : '#3A3A3B',
-                    borderRadius: '10px',
-                    position: 'relative',
-                    transition: 'all 0.2s ease-in-out'
-                  }}>
-                    <div style={{
-                      width: '16px',
-                      height: '16px',
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: '50%',
-                      position: 'absolute',
-                      top: '2px',
-                      left: shareNotesWithClient ? '18px' : '2px',
-                      transition: 'all 0.2s ease-in-out',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                    }} />
-                  </div>
-                </div>
-              </div>
-              <textarea
-                placeholder="Add notes to share with the client through their portal..."
-                value={clientNotes}
-                onChange={(e) => setClientNotes(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  backgroundColor: '#2C2D2E',
-                  border: `1px solid ${shareNotesWithClient ? '#5EB77D' : '#3A3A3B'}`,
-                  borderRadius: '10px',
-                  color: '#FFFFFF',
-                  fontSize: '14px',
-                  outline: 'none',
-                  transition: 'all 0.15s ease-in-out',
-                  resize: 'vertical',
-                  minHeight: '80px'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#5EB77D';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = shareNotesWithClient ? '#5EB77D' : '#3A3A3B';
-                }}
-              />
-              {shareNotesWithClient && (
-                <p style={{
-                  color: '#5EB77D',
-                  fontSize: '12px',
-                  margin: '6px 0 0 0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  These notes will be visible to the client in their portal.
-                </p>
-              )}
             </div>
           </div>
 
           {/* SECTION 4: Primary Property / Jobsite */}
-          <div style={{
+          <div ref={section4Ref} style={{
             backgroundColor: '#232425',
             borderRadius: '14px',
             padding: '24px',
@@ -2300,18 +2203,18 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                 fontWeight: '500',
                 marginBottom: '8px'
               }}>
-                Property Nickname <span style={{ color: '#7A7A7A', fontSize: '12px' }}>(optional)</span>
+                Property Nickname <span style={{ color: '#7A7A7A', fontSize: '12px' }}>(auto-filled from last name)</span>
               </label>
               <input
                 type="text"
                 placeholder="e.g., Main Home"
-                value={propertyNickname}
+                value={propertyNickname || lastName}
                 onChange={(e) => setPropertyNickname(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '11px 14px',
-                  backgroundColor: '#2C2D2E',
-                  border: '1px solid #3A3A3B',
+                  backgroundColor: (propertyNickname || lastName) ? '#3D4435' : '#2C2D2E',
+                  border: (propertyNickname || lastName) ? '1px solid #5EB77D' : '1px solid #3A3A3B',
                   borderRadius: '10px',
                   color: '#FFFFFF',
                   fontSize: '14px',
@@ -2322,12 +2225,13 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                   e.target.style.borderColor = '#5EB77D';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = '#3A3A3B';
+                  const hasValue = propertyNickname || lastName;
+                  e.target.style.borderColor = hasValue ? '#5EB77D' : '#3A3A3B';
                 }}
               />
             </div>
 
-            {/* Street Address */}
+            {/* Street Address with Google Maps Autocomplete */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{
                 display: 'block',
@@ -2338,29 +2242,49 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
               }}>
                 Street Address <span style={{ color: '#C9A049' }}>*</span>
               </label>
-              <input
-                type="text"
-                placeholder="e.g., 123 Main St"
-                value={streetAddress}
-                onChange={(e) => setStreetAddress(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  backgroundColor: '#2C2D2E',
-                  border: '1px solid #3A3A3B',
-                  borderRadius: '10px',
-                  color: '#FFFFFF',
-                  fontSize: '14px',
-                  outline: 'none',
-                  transition: 'all 0.15s ease-in-out'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#5EB77D';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#3A3A3B';
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <MapPin 
+                  size={18} 
+                  color="#C9A049" 
+                  style={{ 
+                    position: 'absolute', 
+                    left: '12px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none'
+                  }} 
+                />
+                <input
+                  ref={addressInputRef}
+                  type="text"
+                  placeholder="Start typing address..."
+                  value={streetAddress}
+                  onChange={(e) => setStreetAddress(e.target.value)}
+                  autoComplete="off"
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px 11px 40px',
+                    backgroundColor: '#2C2D2E',
+                    border: '1px solid #3A3A3B',
+                    borderRadius: '10px',
+                    color: '#FFFFFF',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.15s ease-in-out'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#5EB77D';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#3A3A3B';
+                  }}
+                />
+              </div>
+              {GOOGLE_MAPS_API_KEY && (
+                <p style={{ fontSize: '11px', color: '#666', marginTop: '4px', marginBottom: 0 }}>
+                  Powered by Google Maps - start typing for suggestions
+                </p>
+              )}
             </div>
 
             {/* City / State / ZIP / Region - 4 Column Grid */}
@@ -2457,7 +2381,14 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                   type="text"
                   placeholder="99201"
                   value={zip}
-                  onChange={(e) => handleZipChange(e.target.value)}
+                  onChange={(e) => {
+                    const newZip = e.target.value;
+                    setZip(newZip);
+                    // Auto-fill region based on ZIP
+                    if (newZip.length === 5 && ZIP_TO_REGION[newZip]) {
+                      setRegion(ZIP_TO_REGION[newZip]);
+                    }
+                  }}
                   style={{
                     width: '100%',
                     padding: '11px 14px',
@@ -2487,7 +2418,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                   fontWeight: '500',
                   marginBottom: '8px'
                 }}>
-                  Region <span style={{ color: '#7A7A7A', fontSize: '11px' }}>(auto-filled by ZIP)</span>
+                  Region <span style={{ fontSize: '10px', color: '#666' }}>(auto-filled by ZIP)</span>
                 </label>
                 <div style={{ position: 'relative' }}>
                   <select
@@ -2496,8 +2427,8 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                     style={{
                       width: '100%',
                       padding: '11px 36px 11px 14px',
-                      backgroundColor: region && zipToRegion[zip] === region ? 'rgba(94, 183, 125, 0.1)' : '#2C2D2E',
-                      border: `1px solid ${region && zipToRegion[zip] === region ? '#5EB77D' : '#3A3A3B'}`,
+                      backgroundColor: region ? '#3D4435' : '#2C2D2E',
+                      border: region ? '1px solid #5EB77D' : '1px solid #3A3A3B',
                       borderRadius: '10px',
                       color: region ? '#FFFFFF' : '#7A7A7A',
                       fontSize: '14px',
@@ -2510,13 +2441,23 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                       e.target.style.borderColor = '#5EB77D';
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = region && zipToRegion[zip] === region ? '#5EB77D' : '#3A3A3B';
+                      e.target.style.borderColor = region ? '#5EB77D' : '#3A3A3B';
                     }}
                   >
                     <option value="">Select region</option>
-                    {availableRegions.map(r => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
+                    <option value="Spokane">Spokane</option>
+                    <option value="Valley">Valley</option>
+                    <option value="Liberty Lake">Liberty Lake</option>
+                    <option value="Cheney">Cheney</option>
+                    <option value="Airway Heights">Airway Heights</option>
+                    <option value="Medical Lake">Medical Lake</option>
+                    <option value="Deer Park">Deer Park</option>
+                    <option value="Mead">Mead</option>
+                    <option value="Nine Mile Falls">Nine Mile Falls</option>
+                    <option value="Post Falls">Post Falls</option>
+                    <option value="CDA">CDA</option>
+                    <option value="Hayden">Hayden</option>
+                    <option value="Rathdrum">Rathdrum</option>
                   </select>
                   <ChevronDown 
                     size={16} 
@@ -2526,7 +2467,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
                       top: '50%',
                       transform: 'translateY(-50%)',
                       pointerEvents: 'none',
-                      color: region && zipToRegion[zip] === region ? '#5EB77D' : '#7A7A7A'
+                      color: '#7A7A7A'
                     }}
                   />
                 </div>
@@ -2585,181 +2526,6 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
               </div>
             </div>
 
-            {/* Billing Address Fields - Only show when billingAddressSame is false */}
-            {!billingAddressSame && (
-              <div style={{ 
-                padding: '20px', 
-                backgroundColor: '#1B1C1D', 
-                borderRadius: '12px', 
-                marginBottom: '16px',
-                border: '1px solid #3A3A3B'
-              }}>
-                <h4 style={{ 
-                  color: '#C9A049', 
-                  fontSize: '14px', 
-                  fontWeight: '600', 
-                  marginBottom: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <MapPin size={16} />
-                  Billing Address
-                </h4>
-
-                {/* Billing Street Address */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{
-                    display: 'block',
-                    color: '#A5A5A5',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    marginBottom: '8px'
-                  }}>
-                    Street Address <span style={{ color: '#C9A049' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., 456 Billing St"
-                    value={billingStreetAddress}
-                    onChange={(e) => setBillingStreetAddress(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '11px 14px',
-                      backgroundColor: '#2C2D2E',
-                      border: '1px solid #3A3A3B',
-                      borderRadius: '10px',
-                      color: '#FFFFFF',
-                      fontSize: '14px',
-                      outline: 'none',
-                      transition: 'all 0.15s ease-in-out'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#5EB77D';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = '#3A3A3B';
-                    }}
-                  />
-                </div>
-
-                {/* Billing City / State / ZIP */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '2fr 1fr 1fr',
-                  gap: '16px'
-                }}>
-                  {/* Billing City */}
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      color: '#A5A5A5',
-                      fontSize: '13px',
-                      fontWeight: '500',
-                      marginBottom: '8px'
-                    }}>
-                      City <span style={{ color: '#C9A049' }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Spokane"
-                      value={billingCity}
-                      onChange={(e) => setBillingCity(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        backgroundColor: '#2C2D2E',
-                        border: '1px solid #3A3A3B',
-                        borderRadius: '10px',
-                        color: '#FFFFFF',
-                        fontSize: '14px',
-                        outline: 'none',
-                        transition: 'all 0.15s ease-in-out'
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = '#5EB77D';
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = '#3A3A3B';
-                      }}
-                    />
-                  </div>
-
-                  {/* Billing State */}
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      color: '#A5A5A5',
-                      fontSize: '13px',
-                      fontWeight: '500',
-                      marginBottom: '8px'
-                    }}>
-                      State <span style={{ color: '#C9A049' }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="WA"
-                      value={billingState}
-                      onChange={(e) => setBillingState(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        backgroundColor: '#2C2D2E',
-                        border: '1px solid #3A3A3B',
-                        borderRadius: '10px',
-                        color: '#FFFFFF',
-                        fontSize: '14px',
-                        outline: 'none',
-                        transition: 'all 0.15s ease-in-out'
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = '#5EB77D';
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = '#3A3A3B';
-                      }}
-                    />
-                  </div>
-
-                  {/* Billing ZIP */}
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      color: '#A5A5A5',
-                      fontSize: '13px',
-                      fontWeight: '500',
-                      marginBottom: '8px'
-                    }}>
-                      ZIP <span style={{ color: '#C9A049' }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="99201"
-                      value={billingZip}
-                      onChange={(e) => setBillingZip(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        backgroundColor: '#2C2D2E',
-                        border: '1px solid #3A3A3B',
-                        borderRadius: '10px',
-                        color: '#FFFFFF',
-                        fontSize: '14px',
-                        outline: 'none',
-                        transition: 'all 0.15s ease-in-out'
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = '#5EB77D';
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = '#3A3A3B';
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Property Notes */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{
@@ -2817,34 +2583,146 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
           justifyContent: 'flex-end',
           gap: '12px'
         }}>
-          <button
-            onClick={handleSaveClient}
-            disabled={saving}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#3498DB',
-              border: 'none',
+          {/* Success Message Box */}
+          {saveSuccess && (
+            <div style={{
+              position: 'absolute',
+              bottom: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginBottom: '12px',
+              backgroundColor: '#203D20',
+              border: '1px solid #5EB77D',
               borderRadius: '12px',
-              color: '#FFFFFF',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: saving ? 'not-allowed' : 'pointer',
-              transition: 'all 0.15s ease-in-out',
-              opacity: saving ? 0.7 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (!saving) e.currentTarget.style.backgroundColor = '#2980B9';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#3498DB';
-            }}
-          >
-            {saving ? 'Saving...' : 'Save Client'}
-          </button>
-          
+              padding: '16px 24px',
+              minWidth: '280px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              animation: 'slideUp 0.2s ease-out',
+              zIndex: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <div style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                backgroundColor: '#5EB77D',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#FFF'
+              }}>✓</div>
+              <span style={{ color: '#FFFFFF', fontWeight: '600', fontSize: '15px' }}>
+                {saveSuccess}
+              </span>
+            </div>
+          )}
+
+          {/* Validation Error Box */}
+          {showValidationError && validationErrors.length > 0 && (
+            <div style={{
+              position: 'absolute',
+              bottom: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginBottom: '12px',
+              backgroundColor: '#3D2020',
+              border: '1px solid #E74C3C',
+              borderRadius: '12px',
+              padding: '16px 20px',
+              minWidth: '320px',
+              maxWidth: '500px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              animation: 'slideUp 0.2s ease-out',
+              zIndex: 10
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '10px', 
+                marginBottom: '12px',
+                paddingBottom: '10px',
+                borderBottom: '1px solid #5D3030'
+              }}>
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  backgroundColor: '#E74C3C',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  color: '#FFF'
+                }}>!</div>
+                <span style={{ color: '#FFFFFF', fontWeight: '600', fontSize: '15px' }}>
+                  Please fix the following:
+                </span>
+                <button 
+                  onClick={() => setShowValidationError(false)}
+                  style={{
+                    marginLeft: 'auto',
+                    background: 'none',
+                    border: 'none',
+                    color: '#888',
+                    cursor: 'pointer',
+                    padding: '4px'
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <ul style={{ 
+                margin: 0, 
+                paddingLeft: '0', 
+                listStyle: 'none',
+                color: '#F5A5A5',
+                fontSize: '13px',
+                lineHeight: '1.6'
+              }}>
+                {validationErrors.map((error, index) => (
+                  <li 
+                    key={index} 
+                    onClick={() => scrollToError(error)}
+                    style={{ 
+                      marginBottom: '6px', 
+                      padding: '6px 10px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'background-color 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#4D2525';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <span style={{ color: '#E74C3C' }}>→</span>
+                    {error.message}
+                  </li>
+                ))}
+              </ul>
+              <p style={{ 
+                margin: '12px 0 0 0', 
+                fontSize: '11px', 
+                color: '#888',
+                textAlign: 'center'
+              }}>
+                Click an error to jump to that field
+              </p>
+            </div>
+          )}
+
           <button
-            onClick={handleSaveAndCreateQuote}
-            disabled={saving}
+            onClick={() => handleSave('save')}
             style={{
               padding: '12px 24px',
               backgroundColor: 'transparent',
@@ -2853,18 +2731,40 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
               color: '#FFFFFF',
               fontSize: '14px',
               fontWeight: '600',
-              cursor: saving ? 'not-allowed' : 'pointer',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease-in-out'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#C9A04915';
+              e.currentTarget.style.borderColor = '#D9B563';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.borderColor = '#C9A049';
+            }}
+          >
+            Save Client
+          </button>
+          
+          <button
+            onClick={() => handleSave('quote')}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: 'transparent',
+              border: '2px solid #C9A049',
+              borderRadius: '12px',
+              color: '#FFFFFF',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
               transition: 'all 0.15s ease-in-out',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              opacity: saving ? 0.7 : 1
+              gap: '8px'
             }}
             onMouseEnter={(e) => {
-              if (!saving) {
-                e.currentTarget.style.backgroundColor = '#C9A04915';
-                e.currentTarget.style.borderColor = '#D9B563';
-              }
+              e.currentTarget.style.backgroundColor = '#C9A04915';
+              e.currentTarget.style.borderColor = '#D9B563';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'transparent';
@@ -2876,8 +2776,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
           </button>
           
           <button
-            onClick={handleSaveAndScheduleVisit}
-            disabled={saving}
+            onClick={() => handleSave('visit')}
             style={{
               padding: '12px 24px',
               backgroundColor: '#C9A049',
@@ -2886,18 +2785,15 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
               color: '#1B1C1D',
               fontSize: '14px',
               fontWeight: '600',
-              cursor: saving ? 'not-allowed' : 'pointer',
+              cursor: 'pointer',
               transition: 'all 0.15s ease-in-out',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              opacity: saving ? 0.7 : 1
+              gap: '8px'
             }}
             onMouseEnter={(e) => {
-              if (!saving) {
-                e.currentTarget.style.backgroundColor = '#D9B563';
-                e.currentTarget.style.borderColor = '#D9B563';
-              }
+              e.currentTarget.style.backgroundColor = '#D9B563';
+              e.currentTarget.style.borderColor = '#D9B563';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = '#C9A049';
@@ -2927,5 +2823,6 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onNavigate }:
         }
       `}</style>
     </div>
+    </>
   );
 }
