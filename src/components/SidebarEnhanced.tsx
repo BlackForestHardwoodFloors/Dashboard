@@ -51,7 +51,8 @@ import {
   ListOrdered,
   UserCog,
   HardHat,
-  LayoutDashboard
+  LayoutDashboard,
+  TrendingUp
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
@@ -283,6 +284,13 @@ const colorSets: Record<string, { base: string; highlight: string; shadow: strin
     shadow: '#A8801C',
     hover: '#E2B542',
     active: '#AF861C'
+  },
+  p4p: {
+    base: '#14B8A6',
+    highlight: '#5EEAD4',
+    shadow: '#0D9488',
+    hover: '#2DD4BF',
+    active: '#0F766E'
   },
   settings: {
     base: '#78909C',
@@ -576,6 +584,7 @@ export function SidebarEnhanced({
       ]
     },
     { icon: Star, label: 'Reviews', path: 'Reviews', colorKey: 'reviews' },
+    { icon: TrendingUp, label: 'P4P & Growth', path: '/reports/job-pools', colorKey: 'p4p' },
     { 
       icon: Settings, 
       label: 'Settings', 
@@ -617,6 +626,11 @@ export function SidebarEnhanced({
         onNavigate(path);
       }
     } else {
+      // If path starts with '/', use direct URL navigation
+      if (path.startsWith('/')) {
+        window.location.href = path;
+        return;
+      }
       setActiveItem(path);
       if (onNavigate) {
         onNavigate(path);

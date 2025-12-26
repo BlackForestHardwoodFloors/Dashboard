@@ -1,6 +1,7 @@
-import { Calendar, DollarSign, TrendingUp, Lightbulb, MapPin, Phone, Clock, MessageSquare, Navigation, FileText, Camera as CameraIcon, StickyNote, Edit3, ClipboardEdit, Timer, Image as ImageIcon, ChevronRight, Briefcase, User } from 'lucide-react';
+import { Calendar, DollarSign, TrendingUp, Lightbulb, MapPin, Phone, Clock, MessageSquare, Navigation, FileText, Camera as CameraIcon, StickyNote, Edit3, ClipboardEdit, Timer, Image as ImageIcon, ChevronRight, ChevronLeft, Briefcase, User, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import { useTheme } from '../ThemeProvider';
+import { ChangeOrderModal } from './ChangeOrderModal';
 
 type Tab = 'jobs' | 'photos' | 'messages' | 'me';
 
@@ -14,7 +15,23 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
   const { colors, employeeColor } = useTheme();
   const [expandedJobId, setExpandedJobId] = useState<number | null>(null);
   const [briefingJobId, setBriefingJobId] = useState<number | null>(null);
+  const [changeOrderJobId, setChangeOrderJobId] = useState<number | null>(null);
   const [hoveredProgressJobId, setHoveredProgressJobId] = useState<number | null>(null);
+  const [carouselIndex, setCarouselIndex] = useState<{ [jobId: number]: number }>({});
+  const [fullScreenStreetView, setFullScreenStreetView] = useState<{ address: string; clientName: string } | null>(null);
+  const [fullScreenPhoto, setFullScreenPhoto] = useState<{ 
+    photo: { id: string; url: string; timestamp: string; phase: string; room?: string };
+    jobId: string;
+    clientName: string;
+    allPhotos: any[];
+    currentIndex: number;
+  } | null>(null);
+  const [photoNotes, setPhotoNotes] = useState<{ [photoId: string]: string }>({});
+  const [approvedPhotos, setApprovedPhotos] = useState<{ [photoId: string]: boolean }>({});
+  const [photoZoom, setPhotoZoom] = useState(1);
+  
+  // Employee setting - would come from user settings in real app
+  const canApproveForPortal = true; // Set to false to hide approval option
 
   // Mock data - would come from API/props in real app
   const employeeData = {
@@ -35,7 +52,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
       jobs: [
         {
           id: 1,
-          jobId: 'job-001', // String ID for photo system
+          jobId: 'job-001',
           clientName: 'Anderson, James',
           status: 'In Progress' as const,
           jobType: 'Install',
@@ -46,7 +63,15 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
           startDate: 'Fri, Nov 15, 2024',
           completionDate: 'Wed, Nov 20, 2024',
           briefing: 'Install red oak hardwood in living room and hallway. Client prefers darker stain (Jacobean). Watch for uneven subfloor near fireplace - may need additional leveling compound. Client works from home, so minimize noise before 9 AM. Two cats in home - keep doors closed.',
-          photoCount: 12,
+          photoCount: 6,
+          photos: [
+            { id: 'p1', url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400', timestamp: 'Today 2:30 PM', phase: 'Install', room: 'Living Room' },
+            { id: 'p2', url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400', timestamp: 'Today 11:15 AM', phase: 'Install', room: 'Living Room' },
+            { id: 'p3', url: 'https://images.unsplash.com/photo-1560185007-c5ca9d2c014d?w=400', timestamp: 'Today 9:00 AM', phase: 'Install', room: 'Hallway' },
+            { id: 'p4', url: 'https://images.unsplash.com/photo-1560185008-b033106af5c3?w=400', timestamp: 'Yesterday 4:30 PM', phase: 'Sanding', room: 'Living Room' },
+            { id: 'p5', url: 'https://images.unsplash.com/photo-1560184897-ae75f418493e?w=400', timestamp: 'Yesterday 2:00 PM', phase: 'Before', room: 'Hallway' },
+            { id: 'p6', url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400', timestamp: 'Mon 10:30 AM', phase: 'Before', room: 'Living Room' },
+          ],
           jobCompletePercent: 65,
           totalHours: 24,
           hoursUsed: 15.5,
@@ -165,7 +190,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
             <button
               onClick={() => onTabChange?.('jobs')}
               style={{
-                padding: '12px 8px',
+                padding: '9px 8px',
                 backgroundColor: '#6B7B4A',
                 border: 'none',
                 borderRadius: '12px',
@@ -175,7 +200,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '3px'
               }}
             >
               <Briefcase size={20} />
@@ -185,7 +210,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
             <button
               onClick={() => onNavigate?.('Photos')}
               style={{
-                padding: '12px 8px',
+                padding: '9px 8px',
                 backgroundColor: '#0F7BFF',
                 border: 'none',
                 borderRadius: '12px',
@@ -195,7 +220,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '3px'
               }}
             >
               <ImageIcon size={20} />
@@ -205,7 +230,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
             <button
               onClick={() => onTabChange?.('messages')}
               style={{
-                padding: '12px 8px',
+                padding: '9px 8px',
                 backgroundColor: '#5B7BB5',
                 border: 'none',
                 borderRadius: '12px',
@@ -215,7 +240,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px',
+                gap: '3px',
                 position: 'relative'
               }}
             >
@@ -237,7 +262,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
             <button
               onClick={() => onTabChange?.('me')}
               style={{
-                padding: '12px 8px',
+                padding: '9px 8px',
                 backgroundColor: '#4F6A41',
                 border: 'none',
                 borderRadius: '12px',
@@ -247,7 +272,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '3px'
               }}
             >
               <User size={20} />
@@ -264,7 +289,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
             <button
               onClick={() => onNavigate?.('Calendar')}
               style={{
-                padding: '12px 8px',
+                padding: '9px 8px',
                 backgroundColor: '#3B9CAA',
                 border: 'none',
                 borderRadius: '12px',
@@ -274,7 +299,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '3px'
               }}
             >
               <Calendar size={20} />
@@ -282,9 +307,9 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
             </button>
 
             <button
-              onClick={() => console.log('Navigate to P4P & Growth')}
+              onClick={() => onNavigate?.('P4P')}
               style={{
-                padding: '12px 8px',
+                padding: '9px 8px',
                 backgroundColor: '#D4A024',
                 border: 'none',
                 borderRadius: '12px',
@@ -294,10 +319,10 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '3px'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                 <DollarSign size={18} />
                 <TrendingUp size={14} />
               </div>
@@ -392,78 +417,403 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                       e.currentTarget.style.boxShadow = 'none';
                     }}
                   >
-                    {/* Client Name & Camera Badge */}
+                    {/* Header with Map spanning both rows */}
                     <div style={{
                       display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      marginBottom: '8px'
+                      gap: '12px',
+                      marginBottom: '12px',
                     }}>
-                      <h3 style={{
-                        color: colors.text,
-                        fontSize: '20px',
-                        fontWeight: '700',
-                        margin: 0
-                      }}>
-                        {job.clientName}
-                      </h3>
+                      {/* Left side: Name + Phone, then Address */}
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {/* Row 1: Client Name + Phone */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px'
+                        }}>
+                          <h3 style={{
+                            color: colors.text,
+                            fontSize: '22px',
+                            fontWeight: '700',
+                            margin: 0,
+                            flex: 1
+                          }}>
+                            {job.clientName}
+                          </h3>
+                          
+                          {/* Message Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              console.log('Message');
+                            }}
+                            style={{
+                              width: '44px',
+                              height: '44px',
+                              borderRadius: '10px',
+                              backgroundColor: '#3B9CAA',
+                              border: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 8px rgba(59, 156, 170, 0.3)',
+                              flexShrink: 0
+                            }}
+                          >
+                            <MessageSquare size={20} color="#FFFFFF" />
+                          </button>
+
+                          {/* Call Client Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.location.href = `tel:${job.phoneNumber}`;
+                            }}
+                            style={{
+                              width: '44px',
+                              height: '44px',
+                              borderRadius: '10px',
+                              backgroundColor: '#4F6A41',
+                              border: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 8px rgba(79, 106, 65, 0.3)',
+                              flexShrink: 0
+                            }}
+                          >
+                            <Phone size={20} color="#FFFFFF" />
+                          </button>
+                        </div>
+
+                        {/* Row 2: Address */}
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(`https://maps.google.com/?q=${encodeURIComponent(job.address)}`, '_blank');
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            padding: '10px 12px',
+                            backgroundColor: 'rgba(66, 133, 244, 0.1)',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(66, 133, 244, 0.3)',
+                          }}
+                        >
+                          <Navigation size={16} color="#4285F4" style={{ flexShrink: 0 }} />
+                          <span style={{
+                            color: '#4285F4',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            flex: 1,
+                            lineHeight: '1.3'
+                          }}>
+                            {job.address}
+                          </span>
+                          <ExternalLink size={14} color="#4285F4" />
+                        </div>
+                      </div>
                       
-                      {/* Camera Badge - Opens Camera */}
+                      {/* Right side: Google Street View Thumbnail - spans both rows */}
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFullScreenStreetView({ address: job.address, clientName: job.clientName });
+                        }}
+                        style={{
+                          width: '110px',
+                          alignSelf: 'stretch',
+                          borderRadius: '10px',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          border: '2px solid #4285F4',
+                          flexShrink: 0,
+                          backgroundColor: '#1a3d1a',
+                        }}
+                      >
+                        <img 
+                          src={`https://maps.googleapis.com/maps/api/streetview?size=220x200&location=${encodeURIComponent(job.address)}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`}
+                          alt="Property"
+                          style={{ 
+                            width: '100%', 
+                            height: '100%', 
+                            objectFit: 'cover' 
+                          }}
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.style.display = 'none';
+                            target.parentElement!.innerHTML = '<div style="width:100%;height:100%;background:linear-gradient(135deg, #2d5016 0%, #1a3d1a 50%, #0d2d0d 100%);display:flex;align-items:center;justify-content:center"><span style="font-size:24px">🏠</span></div>';
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Row 3: Job Type & Square Footage */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      marginBottom: '12px'
+                    }}>
+                      <span style={{
+                        backgroundColor: '#4F6A41',
+                        color: '#fff',
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: '700'
+                      }}>
+                        {job.jobType}
+                      </span>
+                      {job.sqft > 0 && (
+                        <span style={{
+                          color: colors.textSecondary,
+                          fontSize: '14px',
+                          fontWeight: '600'
+                        }}>
+                          {job.sqft.toLocaleString()} sq ft
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Row 4: Work Order Button - Only when expanded */}
+                    {isExpanded && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          console.log('Work Order');
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '14px',
+                          backgroundColor: '#4F6A41',
+                          border: 'none',
+                          borderRadius: '12px',
+                          color: '#fff',
+                          fontSize: '15px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '10px',
+                          marginBottom: '16px',
+                          boxShadow: '0 4px 12px rgba(79, 106, 65, 0.3)'
+                        }}
+                      >
+                        <FileText size={20} />
+                        Work Order
+                      </button>
+                    )}
+
+                    {/* Row 5: Photo Carousel - Only when expanded and has photos */}
+                    {isExpanded && job.photos && job.photos.length > 0 && (
+                      <div 
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          width: '100%',
+                          marginBottom: '12px',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          backgroundColor: '#1A1A1A',
+                        }}
+                      >
+                        {/* Main Photo */}
+                        <div 
+                          style={{ position: 'relative', width: '100%', height: '180px', cursor: 'pointer' }}
+                          onClick={() => {
+                            const currentIdx = carouselIndex[job.id] || 0;
+                            setFullScreenPhoto({
+                              photo: job.photos[currentIdx],
+                              jobId: job.jobId,
+                              clientName: job.clientName,
+                              allPhotos: job.photos,
+                              currentIndex: currentIdx
+                            });
+                          }}
+                        >
+                          <img
+                            src={job.photos[carouselIndex[job.id] || 0]?.url}
+                            alt="Job photo"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                          />
+                          
+                          {/* Gradient overlay */}
+                          <div style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            height: '60px',
+                            background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
+                            pointerEvents: 'none',
+                          }} />
+                          
+                          {/* Photo info */}
+                          <div style={{
+                            position: 'absolute',
+                            bottom: '10px',
+                            left: '12px',
+                            right: '12px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-end',
+                          }}>
+                            <div>
+                              <div style={{ fontSize: '11px', color: '#aaa' }}>
+                                {job.photos[carouselIndex[job.id] || 0]?.phase} • {(job.photos[carouselIndex[job.id] || 0] as any)?.room || ''}
+                              </div>
+                              <div style={{ fontSize: '13px', color: '#fff', fontWeight: '600' }}>
+                                {job.photos[carouselIndex[job.id] || 0]?.timestamp}
+                              </div>
+                            </div>
+                            <div style={{
+                              backgroundColor: 'rgba(0,0,0,0.6)',
+                              padding: '4px 10px',
+                              borderRadius: '10px',
+                              fontSize: '12px',
+                              color: '#fff',
+                              fontWeight: '600',
+                            }}>
+                              {(carouselIndex[job.id] || 0) + 1} / {job.photos.length}
+                            </div>
+                          </div>
+                          
+                          {/* Navigation Arrows */}
+                          {job.photos.length > 1 && (
+                            <>
+                              <button
+                                onClick={() => setCarouselIndex(prev => ({
+                                  ...prev,
+                                  [job.id]: (prev[job.id] || 0) === 0 ? job.photos!.length - 1 : (prev[job.id] || 0) - 1
+                                }))}
+                                style={{
+                                  position: 'absolute',
+                                  left: '8px',
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  width: '34px',
+                                  height: '34px',
+                                  borderRadius: '50%',
+                                  backgroundColor: 'rgba(0,0,0,0.5)',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <ChevronLeft size={20} color="#fff" />
+                              </button>
+                              <button
+                                onClick={() => setCarouselIndex(prev => ({
+                                  ...prev,
+                                  [job.id]: (prev[job.id] || 0) === job.photos!.length - 1 ? 0 : (prev[job.id] || 0) + 1
+                                }))}
+                                style={{
+                                  position: 'absolute',
+                                  right: '8px',
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  width: '34px',
+                                  height: '34px',
+                                  borderRadius: '50%',
+                                  backgroundColor: 'rgba(0,0,0,0.5)',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <ChevronRight size={20} color="#fff" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                        
+                        {/* Thumbnail strip */}
+                        <div style={{
+                          display: 'flex',
+                          gap: '6px',
+                          padding: '10px',
+                          overflowX: 'auto',
+                        }}>
+                          {job.photos.map((photo, idx) => (
+                            <button
+                              key={photo.id}
+                              onClick={() => setCarouselIndex(prev => ({ ...prev, [job.id]: idx }))}
+                              style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                border: (carouselIndex[job.id] || 0) === idx ? '2px solid #0F7BFF' : '2px solid transparent',
+                                padding: 0,
+                                cursor: 'pointer',
+                                flexShrink: 0,
+                                opacity: (carouselIndex[job.id] || 0) === idx ? 1 : 0.5,
+                              }}
+                            >
+                              <img
+                                src={photo.url}
+                                alt=""
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Take Photo Button - Only when expanded */}
+                    {isExpanded && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onOpenCamera?.(job.jobId);
                         }}
                         style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '10px',
-                          backgroundColor: COMPANYCAM_BLUE,
+                          width: '100%',
+                          padding: '14px',
+                          backgroundColor: '#0F7BFF',
                           border: 'none',
+                          borderRadius: '12px',
+                          color: '#fff',
+                          cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          cursor: 'pointer',
-                          position: 'relative',
-                          boxShadow: '0 4px 12px rgba(15, 123, 255, 0.3)'
+                          gap: '10px',
+                          marginBottom: '16px',
+                          boxShadow: '0 4px 12px rgba(15, 123, 255, 0.3)',
                         }}
                       >
-                        <CameraIcon size={20} color="#FFFFFF" strokeWidth={2.5} />
-                        {job.photoCount > 0 && (
-                          <div style={{
-                            position: 'absolute',
-                            top: '-6px',
-                            right: '-6px',
-                            minWidth: '20px',
-                            height: '20px',
+                        <CameraIcon size={20} />
+                        <span style={{ fontWeight: '700', fontSize: '15px' }}>Take Photo</span>
+                        {(job.photos?.length || job.photoCount) > 0 && (
+                          <span style={{
+                            backgroundColor: 'rgba(255,255,255,0.2)',
+                            padding: '3px 10px',
                             borderRadius: '10px',
-                            backgroundColor: '#DC2626',
-                            border: '2px solid #1F1F1F',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '10px',
-                            fontWeight: '700',
-                            color: colors.text,
-                            padding: '0 4px'
+                            fontSize: '12px',
                           }}>
-                            {job.photoCount}
-                          </div>
+                            {job.photos?.length || job.photoCount}
+                          </span>
                         )}
                       </button>
-                    </div>
+                    )}
 
-                    {/* Job Type & Square Footage */}
-                    <div style={{
-                      color: colors.textSecondary,
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      marginBottom: '12px'
-                    }}>
-                      {job.jobType} {job.sqft > 0 ? `• ${job.sqft} sq ft` : ''}
-                    </div>
-
-                    {/* Job Briefing Button - Only show when expanded */}
+                    {/* Job Briefing - Only when expanded */}
                     {isExpanded && (
                       <button
                         onClick={(e) => {
@@ -474,248 +824,19 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                           width: '100%',
                           padding: '14px 16px',
                           backgroundColor: '#2A74FF',
-                          border: '1px solid #4A8AFF',
+                          border: 'none',
                           borderRadius: '12px',
-                          color: colors.text,
+                          color: '#fff',
                           cursor: 'pointer',
-                          transition: 'all 0.2s',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          gap: '12px',
-                          marginBottom: '12px',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          boxShadow: '0 6px 16px rgba(42, 116, 255, 0.4)',
-                        }}
-                      >
-                        {/* Gloss overlay */}
-                        <div style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          height: '50%',
-                          background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, transparent 100%)',
-                          pointerEvents: 'none',
-                        }} />
-
-                        {/* Red notification dot */}
-                        <div style={{
-                          position: 'absolute',
-                          top: '8px',
-                          right: '8px',
-                          width: '10px',
-                          height: '10px',
-                          backgroundColor: '#FF3B30',
-                          borderRadius: '50%',
-                          border: '2px solid #FFFFFF',
-                          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-                          zIndex: 2,
-                        }} />
-
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          zIndex: 1,
-                        }}>
-                          <Lightbulb size={18} color="#FFFFFF" strokeWidth={2.5} fill="#FFD700" />
-                          <span style={{
-                            fontWeight: '700',
-                            fontSize: '15px',
-                          }}>
-                            Job Briefing
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '20px', zIndex: 1 }}>→</div>
-                      </button>
-                    )}
-
-                    {/* Job Started & Job Complete Dates - Only show when expanded */}
-                    {isExpanded && (
-                      <div style={{
-                        display: 'flex',
-                        gap: '16px',
-                        marginBottom: '12px',
-                        flexWrap: 'wrap'
-                      }}>
-                        <div style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                          flex: '1 1 140px',
-                          backgroundColor: colors.backgroundTertiary,
-                          padding: '12px',
-                          borderRadius: '10px'
-                        }}>
-                          <span style={{
-                            color: '#666666',
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            textTransform: 'uppercase'
-                          }}>
-                            Job Started
-                          </span>
-                          <span style={{
-                            color: colors.text,
-                            fontSize: '14px',
-                            fontWeight: '700'
-                          }}>
-                            {job.startDate}
-                          </span>
-                        </div>
-                        <div style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                          flex: '1 1 140px',
-                          backgroundColor: colors.backgroundTertiary,
-                          padding: '12px',
-                          borderRadius: '10px'
-                        }}>
-                          <span style={{
-                            color: '#666666',
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            textTransform: 'uppercase'
-                          }}>
-                            Complete By
-                          </span>
-                          <span style={{
-                            color: employeeColor,
-                            fontSize: '14px',
-                            fontWeight: '700'
-                          }}>
-                            {job.completionDate}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Crew Info - Only show when expanded */}
-                    {isExpanded && job.crew && job.crew.length > 0 && (
-                      <div style={{
-                        backgroundColor: colors.backgroundTertiary,
-                        padding: '12px',
-                        borderRadius: '10px',
-                        marginBottom: '12px'
-                      }}>
-                        <div style={{
-                          color: '#666666',
-                          fontSize: '11px',
-                          fontWeight: '600',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
-                          marginBottom: '8px'
-                        }}>
-                          Assigned Crew ({job.crew.length})
-                        </div>
-                        <div style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '8px'
-                        }}>
-                          {job.crew.map((crewMember, index) => (
-                            <div
-                              key={index}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                backgroundColor: colors.backgroundSecondary,
-                                padding: '6px 12px',
-                                borderRadius: '20px',
-                                border: '1px solid #333333'
-                              }}
-                            >
-                              <div style={{
-                                width: '24px',
-                                height: '24px',
-                                borderRadius: '50%',
-                                backgroundColor: '#3B9CAA',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: colors.text,
-                                fontSize: '11px',
-                                fontWeight: '700',
-                                flexShrink: 0
-                              }}>
-                                {crewMember.split(' ').map(n => n[0]).join('')}
-                              </div>
-                              <span style={{
-                                color: '#E0E0E0',
-                                fontSize: '13px',
-                                fontWeight: '600'
-                              }}>
-                                {crewMember}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Address - Clickable for Navigation */}
-                    <div 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(`https://maps.google.com/?q=${encodeURIComponent(job.address)}`);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '8px',
-                        marginBottom: isExpanded ? '16px' : '0',
-                        cursor: 'pointer',
-                        padding: '8px',
-                        backgroundColor: 'rgba(66, 133, 244, 0.1)',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(66, 133, 244, 0.2)',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <MapPin size={16} color="#4285F4" style={{ marginTop: '2px', flexShrink: 0 }} />
-                      <span style={{
-                        color: '#4285F4',
-                        fontSize: '14px',
-                        lineHeight: '1.4',
-                        fontWeight: '600'
-                      }}>
-                        {job.address}
-                      </span>
-                    </div>
-
-                    {/* Large Camera Button - Only show when expanded */}
-                    {isExpanded && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenCamera?.(job.jobId);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '24px',
-                          backgroundColor: '#0F7BFF',
-                          border: 'none',
-                          borderRadius: '16px',
-                          color: colors.text,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '12px',
-                          boxShadow: '0 8px 20px rgba(15, 123, 255, 0.4)',
-                          position: 'relative',
-                          overflow: 'hidden',
                           marginBottom: '16px',
-                          marginTop: '16px',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          boxShadow: '0 4px 12px rgba(42, 116, 255, 0.3)',
                         }}
                       >
-                        {/* Gloss overlay */}
                         <div style={{
                           position: 'absolute',
                           top: 0,
@@ -725,146 +846,54 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                           background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, transparent 100%)',
                           pointerEvents: 'none',
                         }} />
-
-                        <CameraIcon size={56} strokeWidth={2.5} style={{ 
-                          filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3))',
-                          zIndex: 1 
+                        <div style={{
+                          position: 'absolute',
+                          top: '10px',
+                          right: '10px',
+                          width: '8px',
+                          height: '8px',
+                          backgroundColor: '#FF3B30',
+                          borderRadius: '50%',
+                          border: '2px solid #fff',
                         }} />
-                        
-                        <div style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '4px',
-                          zIndex: 1
-                        }}>
-                          <span style={{
-                            fontWeight: '700',
-                            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-                            letterSpacing: '0.5px'
-                          }}>
-                            TAKE PHOTO
-                          </span>
-                          {job.photoCount > 0 && (
-                            <span style={{
-                              fontSize: '14px',
-                              fontWeight: '600',
-                              opacity: 0.9,
-                            }}>
-                              {job.photoCount} photo{job.photoCount !== 1 ? 's' : ''} captured
-                            </span>
-                          )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', zIndex: 1 }}>
+                          <Lightbulb size={18} fill="#FFD700" />
+                          <span style={{ fontWeight: '700', fontSize: '15px' }}>Job Briefing</span>
                         </div>
+                        <ChevronRight size={20} style={{ zIndex: 1 }} />
                       </button>
                     )}
 
-                    {/* View Photos Button - Only show when expanded and has photos */}
-                    {isExpanded && job.photoCount > 0 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenPhotos?.(job.jobId);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '14px',
-                          backgroundColor: colors.backgroundTertiary,
-                          border: '1px solid #3D3D3D',
-                          borderRadius: '12px',
-                          color: colors.text,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '12px',
-                          marginBottom: '16px',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <ImageIcon size={20} color={COMPANYCAM_BLUE} />
-                          <span style={{ fontWeight: '600', fontSize: '15px' }}>
-                            View All Photos
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{
-                            backgroundColor: COMPANYCAM_BLUE,
-                            color: colors.text,
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            fontSize: '12px',
-                            fontWeight: '700'
-                          }}>
-                            {job.photoCount}
-                          </span>
-                          <ChevronRight size={18} color="#666" />
-                        </div>
-                      </button>
-                    )}
-
-                    {/* Action Buttons Grid - Only show when expanded */}
+                    {/* Action Buttons - 3 buttons - Only when expanded */}
                     {isExpanded && (
-                      <div onClick={(e) => e.stopPropagation()} style={{ marginTop: '4px' }}>
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: '12px',
-                          marginBottom: '16px'
-                        }}>
-                          <ActionButton
-                            icon={FileText}
-                            label="Work Order"
-                            color="#4F6A41"
-                            onClick={() => console.log('Work Order')}
-                          />
-                          <ActionButton
-                            icon={MessageSquare}
-                            label="Message"
-                            color="#3B9CAA"
-                            onClick={() => console.log('Message')}
-                          />
-                          <ActionButton
-                            icon={StickyNote}
-                            label="Notes"
-                            color="#FBBF24"
-                            onClick={() => console.log('Notes')}
-                          />
-                          <ActionButton
-                            icon={ClipboardEdit}
-                            label="Change Order"
-                            color="#6B5D4F"
-                            onClick={() => console.log('Change Order')}
-                          />
-                        </div>
-
-                        {/* Call Button */}
-                        <button
-                          onClick={() => window.location.href = `tel:${job.phoneNumber}`}
-                          style={{
-                            width: '100%',
-                            padding: '14px',
-                            backgroundColor: colors.backgroundTertiary,
-                            border: '1px solid #4F6A41',
-                            borderRadius: '12px',
-                            color: '#4F6A41',
-                            fontSize: '15px',
-                            fontWeight: '700',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            marginBottom: '12px'
-                          }}
-                        >
-                          <Phone size={18} />
-                          Call Client
-                        </button>
+                      <div onClick={(e) => e.stopPropagation()} style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr 1fr',
+                        gap: '10px',
+                        marginBottom: '16px'
+                      }}>
+                        <ActionButton
+                          icon={ClipboardEdit}
+                          label="Change Order"
+                          color="#6B5D4F"
+                          onClick={() => setChangeOrderJobId(job.id)}
+                        />
+                        <ActionButton
+                          icon={Edit3}
+                          label="Stain Sign Off"
+                          color="#8B5CF6"
+                          onClick={() => console.log('Stain Sign Off')}
+                        />
+                        <ActionButton
+                          icon={StickyNote}
+                          label="Notes"
+                          color="#FBBF24"
+                          onClick={() => console.log('Notes')}
+                        />
                       </div>
                     )}
 
-                    {/* Progress Bar - Always visible */}
+                    {/* Progress Bar - Always visible for In Progress jobs */}
                     {job.status === 'In Progress' && (
                       <div 
                         style={{ 
@@ -878,20 +907,12 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
-                          marginBottom: '8px'
+                          marginBottom: '6px'
                         }}>
-                          <span style={{
-                            color: '#888888',
-                            fontSize: '12px',
-                            fontWeight: '600'
-                          }}>
+                          <span style={{ color: '#888', fontSize: '12px', fontWeight: '600' }}>
                             Progress
                           </span>
-                          <span style={{
-                            color: '#4F6A41',
-                            fontSize: '12px',
-                            fontWeight: '700'
-                          }}>
+                          <span style={{ color: '#4F6A41', fontSize: '12px', fontWeight: '700' }}>
                             {job.jobCompletePercent}%
                           </span>
                         </div>
@@ -900,19 +921,16 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                           height: '8px',
                           backgroundColor: '#2A2A2A',
                           borderRadius: '10px',
-                          overflow: 'visible',
-                          position: 'relative',
-                          cursor: 'help'
+                          overflow: 'hidden',
                         }}>
                           <div style={{
                             width: `${job.jobCompletePercent}%`,
                             height: '100%',
                             backgroundColor: '#4F6A41',
-                            transition: 'width 0.3s',
-                            borderRadius: '10px'
+                            borderRadius: '10px',
                           }} />
                         </div>
-
+                        
                         {/* Hover Tooltip */}
                         {hoveredProgressJobId === job.id && (
                           <div style={{
@@ -927,7 +945,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                             padding: '12px 16px',
                             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
                             zIndex: 1000,
-                            minWidth: '200px',
+                            minWidth: '180px',
                             pointerEvents: 'none'
                           }}>
                             <div style={{
@@ -941,21 +959,18 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                               borderRight: '10px solid transparent',
                               borderTop: '10px solid #4F6A41'
                             }} />
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ color: '#888888', fontSize: '13px' }}>Total Hours:</span>
-                                <span style={{ color: colors.text, fontSize: '14px', fontWeight: '700' }}>{job.totalHours} hrs</span>
+                                <span style={{ color: '#888', fontSize: '12px' }}>Total Hours:</span>
+                                <span style={{ color: colors.text, fontSize: '13px', fontWeight: '700' }}>{job.totalHours} hrs</span>
                               </div>
-                              <div style={{ height: '1px', backgroundColor: '#333333' }} />
                               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ color: '#888888', fontSize: '13px' }}>Hours Used:</span>
-                                <span style={{ color: '#4F6A41', fontSize: '14px', fontWeight: '700' }}>{job.hoursUsed} hrs</span>
+                                <span style={{ color: '#888', fontSize: '12px' }}>Hours Used:</span>
+                                <span style={{ color: '#4F6A41', fontSize: '13px', fontWeight: '700' }}>{job.hoursUsed} hrs</span>
                               </div>
-                              <div style={{ height: '1px', backgroundColor: '#333333' }} />
                               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ color: '#888888', fontSize: '13px' }}>Remaining:</span>
-                                <span style={{ color: employeeColor, fontSize: '14px', fontWeight: '700' }}>{job.remainingHours} hrs</span>
+                                <span style={{ color: '#888', fontSize: '12px' }}>Remaining:</span>
+                                <span style={{ color: employeeColor, fontSize: '13px', fontWeight: '700' }}>{job.remainingHours} hrs</span>
                               </div>
                             </div>
                           </div>
@@ -991,16 +1006,470 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
           />
         );
       })()}
+
+      {/* Change Order Modal */}
+      {changeOrderJobId !== null && (() => {
+        const currentJob = weekSchedule.flatMap(day => day.jobs).find(job => job.id === changeOrderJobId);
+        
+        if (!currentJob) return null;
+        
+        return (
+          <ChangeOrderModal
+            isOpen={true}
+            onClose={() => setChangeOrderJobId(null)}
+            jobName={currentJob.clientName}
+            clientName={currentJob.clientName}
+            clientPhone={currentJob.phoneNumber}
+            address={currentJob.address}
+            city="Spokane Valley"
+            state="WA"
+            zip="99037"
+            scheduledDate={currentJob.startDate}
+          />
+        );
+      })()}
+
+      {/* Fullscreen Street View Modal */}
+      {fullScreenStreetView && (
+        <div
+          onClick={() => setFullScreenStreetView(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.95)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+        >
+          {/* Close button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setFullScreenStreetView(null);
+            }}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              border: 'none',
+              color: '#fff',
+              fontSize: '24px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            ✕
+          </button>
+
+          {/* Client name */}
+          <h2 style={{
+            color: '#fff',
+            fontSize: '20px',
+            fontWeight: '700',
+            marginBottom: '8px',
+            textAlign: 'center',
+          }}>
+            {fullScreenStreetView.clientName}
+          </h2>
+
+          {/* Address */}
+          <p style={{
+            color: '#aaa',
+            fontSize: '14px',
+            marginBottom: '20px',
+            textAlign: 'center',
+          }}>
+            {fullScreenStreetView.address}
+          </p>
+
+          {/* Large Street View Image - clickable to route */}
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(`https://maps.google.com/?q=${encodeURIComponent(fullScreenStreetView.address)}`, '_blank');
+            }}
+            style={{
+              width: '100%',
+              maxWidth: '600px',
+              height: '60vh',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              cursor: 'pointer',
+              border: '3px solid #4285F4',
+              position: 'relative',
+            }}
+          >
+            <img
+              src={`https://maps.googleapis.com/maps/api/streetview?size=600x600&location=${encodeURIComponent(fullScreenStreetView.address)}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`}
+              alt="Property Street View"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }}
+            />
+            
+            {/* Tap to navigate overlay */}
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: '16px',
+              background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}>
+              <Navigation size={20} color="#4285F4" />
+              <span style={{ color: '#fff', fontSize: '16px', fontWeight: '600' }}>
+                Tap to navigate
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Photo Modal */}
+      {fullScreenPhoto && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#000',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {/* Header */}
+          <div style={{
+            padding: '12px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  setFullScreenPhoto(null);
+                  setPhotoZoom(1);
+                }}
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ✕
+              </button>
+              <div>
+                <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: '700', margin: 0 }}>
+                  {fullScreenPhoto.clientName}
+                </h3>
+                <p style={{ color: '#888', fontSize: '12px', margin: '2px 0 0 0' }}>
+                  {fullScreenPhoto.photo.phase} • {(fullScreenPhoto.photo as any).room || ''} • {fullScreenPhoto.photo.timestamp}
+                </p>
+              </div>
+            </div>
+
+            {/* Share with Client Checkbox */}
+            {canApproveForPortal && (
+              <label
+                title="Check to share with client"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  backgroundColor: approvedPhotos[fullScreenPhoto.photo.id] ? 'rgba(79, 106, 65, 0.3)' : 'rgba(255,255,255,0.1)',
+                  padding: '8px 14px',
+                  borderRadius: '20px',
+                  border: approvedPhotos[fullScreenPhoto.photo.id] ? '2px solid #4F6A41' : '2px solid transparent',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={approvedPhotos[fullScreenPhoto.photo.id] || false}
+                  onChange={() => {
+                    setApprovedPhotos(prev => ({
+                      ...prev,
+                      [fullScreenPhoto.photo.id]: !prev[fullScreenPhoto.photo.id]
+                    }));
+                  }}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    accentColor: '#4F6A41',
+                    cursor: 'pointer',
+                  }}
+                />
+                <span style={{ color: '#fff', fontSize: '13px', fontWeight: '600' }}>
+                  Share with Client
+                </span>
+              </label>
+            )}
+          </div>
+
+          {/* Main Photo Area - Full Screen */}
+          <div 
+            style={{ 
+              flex: 1, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              overflow: 'hidden',
+              cursor: photoZoom > 1 ? 'grab' : 'zoom-in',
+            }}
+            onClick={() => {
+              if (photoZoom === 1) {
+                setPhotoZoom(2);
+              } else {
+                setPhotoZoom(1);
+              }
+            }}
+            onWheel={(e) => {
+              e.preventDefault();
+              const delta = e.deltaY > 0 ? -0.2 : 0.2;
+              setPhotoZoom(prev => Math.max(1, Math.min(4, prev + delta)));
+            }}
+          >
+            <img
+              src={fullScreenPhoto.photo.url}
+              alt="Photo"
+              style={{
+                maxWidth: photoZoom === 1 ? '95%' : 'none',
+                maxHeight: photoZoom === 1 ? '85vh' : 'none',
+                width: photoZoom > 1 ? `${photoZoom * 100}%` : 'auto',
+                objectFit: 'contain',
+                transition: 'transform 0.2s ease',
+                transform: `scale(${photoZoom > 1 ? 1 : 1})`,
+              }}
+            />
+
+            {/* Navigation arrows */}
+            {fullScreenPhoto.allPhotos.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPhotoZoom(1);
+                    const newIndex = fullScreenPhoto.currentIndex === 0 
+                      ? fullScreenPhoto.allPhotos.length - 1 
+                      : fullScreenPhoto.currentIndex - 1;
+                    setFullScreenPhoto({
+                      ...fullScreenPhoto,
+                      photo: fullScreenPhoto.allPhotos[newIndex],
+                      currentIndex: newIndex
+                    });
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: '16px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <ChevronLeft size={32} color="#fff" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPhotoZoom(1);
+                    const newIndex = fullScreenPhoto.currentIndex === fullScreenPhoto.allPhotos.length - 1 
+                      ? 0 
+                      : fullScreenPhoto.currentIndex + 1;
+                    setFullScreenPhoto({
+                      ...fullScreenPhoto,
+                      photo: fullScreenPhoto.allPhotos[newIndex],
+                      currentIndex: newIndex
+                    });
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '16px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <ChevronRight size={32} color="#fff" />
+                </button>
+              </>
+            )}
+
+            {/* Photo counter */}
+            <div style={{
+              position: 'absolute',
+              bottom: '80px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: 'rgba(0,0,0,0.6)',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              color: '#fff',
+              fontSize: '14px',
+              fontWeight: '600',
+            }}>
+              {fullScreenPhoto.currentIndex + 1} / {fullScreenPhoto.allPhotos.length}
+            </div>
+
+            {/* Zoom indicator */}
+            {photoZoom > 1 && (
+              <div style={{
+                position: 'absolute',
+                top: '80px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                color: '#fff',
+                fontSize: '12px',
+              }}>
+                {Math.round(photoZoom * 100)}% - Click to reset
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Action Bar */}
+          <div style={{
+            padding: '14px 20px',
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'center',
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+          }}>
+            {/* Annotate Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log('Open annotation tool for photo:', fullScreenPhoto.photo.id);
+              }}
+              style={{
+                padding: '14px 28px',
+                backgroundColor: '#0F7BFF',
+                border: 'none',
+                borderRadius: '12px',
+                color: '#fff',
+                fontSize: '15px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}
+            >
+              <Edit3 size={20} />
+              Annotate
+            </button>
+
+            {/* Notes Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const note = prompt('Add note for this photo:', photoNotes[fullScreenPhoto.photo.id] || '');
+                if (note !== null) {
+                  setPhotoNotes(prev => ({ ...prev, [fullScreenPhoto.photo.id]: note }));
+                }
+              }}
+              style={{
+                padding: '14px 28px',
+                backgroundColor: '#FBBF24',
+                border: 'none',
+                borderRadius: '12px',
+                color: '#000',
+                fontSize: '15px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                position: 'relative',
+              }}
+            >
+              <StickyNote size={20} />
+              Notes
+              {photoNotes[fullScreenPhoto.photo.id] && (
+                <span style={{
+                  width: '10px',
+                  height: '10px',
+                  backgroundColor: '#DC2626',
+                  borderRadius: '50%',
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  border: '2px solid #FBBF24',
+                }} />
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // Action Button Component
 function ActionButton({ icon: Icon, label, color, onClick, badge }: { icon: any, label: string, color: string, onClick: () => void, badge?: number }) {
+  const { colors } = useTheme();
   return (
     <button
       onClick={onClick}
       style={{
+        width: '100%',
         padding: '16px 12px',
         backgroundColor: color,
         border: 'none',

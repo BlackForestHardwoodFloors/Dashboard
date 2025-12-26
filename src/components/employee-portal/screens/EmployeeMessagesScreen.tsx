@@ -171,7 +171,7 @@ export function EmployeeMessagesScreen({ onOpenConversation }: EmployeeMessagesS
     }}>
       {/* Header */}
       <div style={{
-        padding: '0 20px 16px',
+        padding: '0 20px 16px 100px',
         borderBottom: `1px solid ${colors.border}`
       }}>
         <h1 style={{ 
@@ -187,7 +187,7 @@ export function EmployeeMessagesScreen({ onOpenConversation }: EmployeeMessagesS
           color: colors.textSecondary,
           margin: 0
         }}>
-          Chat with customers and your team
+                    {conversations.filter(c => c.contactType === 'employee').length} teams • {conversations.filter(c => c.contactType === 'customer').length} customers
         </p>
       </div>
 

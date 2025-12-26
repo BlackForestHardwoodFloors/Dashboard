@@ -3,7 +3,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { FullDashboard } from './components/FullDashboard';
 import TimeLogsPage from './components/TimeLogsPage';
 import ClientsPage from './components/ClientsPage';
-import CalendarPage from './components/CalendarPage';
+import { CalendarScreen as CalendarPage } from './components/CalendarScreen';
 import PhotosPage from './components/PhotosPage';
 import MessagesPage from './components/MessagesPage';
 import QuotesPage from './components/QuotesPage';
@@ -14,6 +14,7 @@ import WorkOrdersPage from './components/WorkOrdersPage';
 import ItemsPage from './components/ItemsPage';
 import VendorsPage from './components/VendorsPage';
 import SettingsPage from './components/SettingsPage';
+import JobPoolsPage from './components/JobPoolsPage';
 import AdminLoginPage from './components/AdminLoginPage';
 import EmployeeLoginPage from './components/EmployeeLoginPage';
 import CustomerLoginPage from './components/CustomerLoginPage';
@@ -35,6 +36,7 @@ type ViewType =
   | 'work-orders'
   | 'jobs'
   | 'job-card'
+  | 'job-pools'
   | 'photos'
   | 'time-sheet' 
   | 'items'
@@ -77,6 +79,11 @@ function AppContent() {
     if (path === '/preview' || path === '/preview/') {
       setIsPreviewMode(true);
       return;
+    }
+    
+    // Handle /reports/job-pools route
+    if (path === '/reports/job-pools' || path === '/reports/job-pools/') {
+      setCurrentView('job-pools');
     }
     
     if (path === '/admin/login' || path === '/admin/login/') {
@@ -235,6 +242,10 @@ function AppContent() {
       'Communications': 'communications',
       'CommunicationHub': 'communications',
       'Communication Hub': 'communications',
+      'JobPools': 'job-pools',
+      'Job Pools': 'job-pools',
+      'P4P': 'job-pools',
+      'P4P & Growth': 'job-pools',
     };
 
     // Handle mode switching
@@ -291,6 +302,8 @@ function AppContent() {
         return <WorkOrdersPage onNavigate={handleNavigate} />;
       case 'jobs':
         return <JobsPage onNavigate={handleNavigate} />;
+      case 'job-pools':
+        return <JobPoolsPage onBack={() => setCurrentView('dashboard')} />;
       case 'photos':
         return <PhotosPage onNavigate={handleNavigate} />;
       case 'time-sheet':
@@ -385,7 +398,7 @@ function AppContent() {
   
   // Check if employee is viewing a main page (Calendar, Photos, etc.)
   const employeeViewingMainPage = currentPortal === 'employee' && 
-    ['calendar', 'photos', 'messages', 'time-sheet'].includes(currentView);
+    ['calendar', 'photos', 'messages', 'time-sheet', 'job-pools'].includes(currentView);
 
   // Render employee main page with back button
   const renderEmployeeMainPage = () => {
@@ -399,6 +412,8 @@ function AppContent() {
           return <MessagesPage onNavigate={handleNavigate} />;
         case 'time-sheet':
           return <TimeLogsPage onNavigate={handleNavigate} />;
+        case 'job-pools':
+          return <JobPoolsPage onBack={() => setCurrentView('dashboard')} />;
         default:
           return null;
       }
@@ -424,7 +439,7 @@ function AppContent() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
           }}
         >
-          ← Back to Portal
+          ← Back
         </button>
         {pageComponent}
       </div>
@@ -440,7 +455,7 @@ function AppContent() {
           renderEmployeeMainPage()
         ) : (
           <>
-            {/* Back to Admin button for admin preview */}
+            {/* Back to Admin button for admin preview - only shows for admins */}
             {isAdminPreviewingEmployee && (
               <button
                 onClick={() => {
@@ -452,17 +467,21 @@ function AppContent() {
                 }}
                 style={{
                   position: 'fixed',
-                  top: '10px',
-                  right: '10px',
+                  top: '12px',
+                  right: '12px',
                   zIndex: 9999,
-                  padding: '10px 20px',
+                  padding: '8px 16px',
                   backgroundColor: '#D4A024',
                   color: '#fff',
                   border: 'none',
-                  borderRadius: '8px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
                 }}
               >
                 ← Back to Admin

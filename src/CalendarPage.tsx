@@ -1827,7 +1827,7 @@ export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: {
         </div>
       )}
 
-      <div style={{ flex: 1, marginLeft: (isMobile || hideOnsiteVisits) ? 0 : '200px', padding: isMobile ? '16px' : '24px', overflow: 'auto', height: '100vh' }}>
+      <div style={{ flex: 1, marginLeft: (isMobile || hideOnsiteVisits) ? 0 : '200px', padding: isMobile ? '16px' : '24px', paddingTop: hideOnsiteVisits ? '80px' : (isMobile ? '16px' : '24px'), paddingLeft: hideOnsiteVisits ? '140px' : (isMobile ? '16px' : '24px'), overflow: 'auto', height: '100vh' }}>
         {isMobile && !hideOnsiteVisits && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
             <button onClick={() => setShowMobileSidebar(true)} style={{ padding: '8px', backgroundColor: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', cursor: 'pointer' }}>
@@ -1837,17 +1837,17 @@ export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '16px', marginBottom: '24px' }}>
-          <div>
-            {!isMobile && <h1 style={{ fontSize: '28px', color: textColor, margin: '0 0 4px 0', fontWeight: 'bold' }}>{hideOnsiteVisits ? 'My Schedule' : 'Appointments'}</h1>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: 'row', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '200px' }}>
+            <h1 style={{ fontSize: '28px', color: textColor, margin: '0 0 4px 0', fontWeight: 'bold' }}>{hideOnsiteVisits ? 'My Schedule' : 'Appointments'}</h1>
             <p style={{ fontSize: '14px', color: textMuted, margin: 0 }}>{hideOnsiteVisits ? 'View your schedule and request time off' : 'Schedule appointments, manage jobs, and track crew assignments'}</p>
           </div>
           {hideOnsiteVisits ? (
-            <button onClick={() => setShowTimeOffModal(true)} style={{ padding: '12px 20px', backgroundColor: '#D76A6A', color: '#FFFFFF', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 0 0 #A84C4C' }}>
+            <button onClick={() => setShowTimeOffModal(true)} style={{ padding: '12px 20px', backgroundColor: '#D76A6A', color: '#FFFFFF', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 0 0 #A84C4C', flexShrink: 0 }}>
               <Plus size={18} />Request Time Off
             </button>
           ) : (
-            <button onClick={openNewAppointmentModal} style={{ padding: '12px 20px', backgroundColor: accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 0 0 #A88438' }}>
+            <button onClick={openNewAppointmentModal} style={{ padding: '12px 20px', backgroundColor: accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 0 0 #A88438', flexShrink: 0 }}>
               <Plus size={18} />New Appointment
             </button>
           )}

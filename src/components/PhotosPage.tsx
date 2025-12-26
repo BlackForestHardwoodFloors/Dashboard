@@ -459,9 +459,9 @@ export default function PhotosPage({ onNavigate, hideSidebar = false }: { onNavi
       )}
 
       {/* Main Content */}
-      <div style={{ flex: 1, marginLeft: (isMobile || hideSidebar) ? 0 : '200px', padding: isMobile ? '16px' : '24px', overflow: 'auto' }}>
+      <div style={{ flex: 1, marginLeft: (isMobile || hideSidebar) ? 0 : '200px', padding: isMobile ? '16px' : '24px', paddingTop: hideSidebar ? '70px' : (isMobile ? '16px' : '24px'), overflow: 'auto' }}>
         {/* Mobile Header */}
-        {isMobile && (
+        {isMobile && !hideSidebar && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
             <button 
               onClick={() => setShowMobileSidebar(true)} 
@@ -474,9 +474,9 @@ export default function PhotosPage({ onNavigate, hideSidebar = false }: { onNavi
         )}
 
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '16px', marginBottom: '24px' }}>
-          <div>
-            {!isMobile && <h1 style={{ fontSize: '28px', color: textColor, margin: '0 0 4px 0', fontWeight: 'bold' }}>Photos</h1>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: 'row', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '200px' }}>
+            <h1 style={{ fontSize: '28px', color: textColor, margin: '0 0 4px 0', fontWeight: 'bold' }}>Photos</h1>
             <p style={{ fontSize: '14px', color: textMuted, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {filteredPhotos.length} photos • {photos.filter(p => p.showInClientPortal).length} shared to portal • {selectedPhotos.size} selected
               {photosWithNewNotes > 0 && (
@@ -497,7 +497,7 @@ export default function PhotosPage({ onNavigate, hideSidebar = false }: { onNavi
               )}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
             {/* Camera Button - prominent on mobile */}
             <button 
               onClick={() => setShowCamera(true)}
