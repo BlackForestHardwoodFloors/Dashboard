@@ -119,7 +119,7 @@ function AppContent() {
     setLoginError('');
 
     try {
-      const response = await fetch('http://localhost:3001/auth/login', {
+      const response = await fetch('http://35.92.33.215:3001/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

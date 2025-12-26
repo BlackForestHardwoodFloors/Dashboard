@@ -164,7 +164,7 @@ export function ThemeProvider({
         const token = localStorage.getItem('token');
         if (!token) return;
         
-        const response = await fetch('http://localhost:3001/employee/me', {
+        const response = await fetch('http://35.92.33.215:3001/employee/me', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         

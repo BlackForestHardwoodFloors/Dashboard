@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from 'react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://35.92.33.215:3001';
 
 // Theme colors matching the app
 const MAUVE = '#9B8AA3';

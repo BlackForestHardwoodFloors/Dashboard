@@ -84,7 +84,7 @@ export default function SettingsPage({ onNavigate }: { onNavigate?: (page: strin
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const response = await fetch('http://localhost:3001/employee/get-employees', {
+        const response = await fetch('http://35.92.33.215:3001/employee/get-employees', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -170,7 +170,7 @@ export default function SettingsPage({ onNavigate }: { onNavigate?: (page: strin
 
     try {
       // Call your backend API to create the employee
-      const response = await fetch('http://localhost:3001/employee/create-employee', {
+      const response = await fetch('http://35.92.33.215:3001/employee/create-employee', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -271,7 +271,7 @@ export default function SettingsPage({ onNavigate }: { onNavigate?: (page: strin
     setIsSubmitting(true);
     
     try {
-      const response = await fetch(`http://localhost:3001/employee/update-employee/${editingEmployee.id}`, {
+      const response = await fetch(`http://35.92.33.215:3001/employee/update-employee/${editingEmployee.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

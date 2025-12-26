@@ -138,7 +138,7 @@ interface NewClientFormData {
 }
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://35.92.33.215:3001';
 
 function getDaysAgo(dateString: string): string {
   const date = new Date(dateString);
@@ -3978,7 +3978,7 @@ export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: {
 
                   try {
                     const token = localStorage.getItem('token');
-                    const response = await fetch('http://localhost:3001/api/time-off-requests', {
+                    const response = await fetch('http://35.92.33.215:3001/api/time-off-requests', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
