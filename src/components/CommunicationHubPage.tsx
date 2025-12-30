@@ -167,7 +167,7 @@ export default function CommunicationHubPage({ onNavigate }: CommunicationHubPag
     const fetchEmployees = async () => {
       try {
         const token = localStorage.getItem('token');
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const API_URL = import.meta.env.VITE_API_URL || 'http://35.92.33.215:3001';
         const response = await fetch(`${API_URL}/employee/get-employee`, {
           headers: { 
             'Authorization': `Bearer ${token}`, 

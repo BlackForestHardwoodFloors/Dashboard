@@ -271,12 +271,14 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
           >
             ← Back
           </button>
-          <EmployeePhotosScreen
-            photos={photos}
-            jobs={jobs.map(j => ({ id: j.id, name: j.name }))}
-            onTakePhoto={() => setIsCameraOpen(true)}
-            filterJobId={filterJobId}
-          />
+          <div style={{ paddingTop: '50px' }}>
+            <EmployeePhotosScreen
+              photos={photos}
+              jobs={jobs.map(j => ({ id: j.id, name: j.name }))}
+              onTakePhoto={() => setIsCameraOpen(true)}
+              filterJobId={filterJobId}
+            />
+          </div>
         </div>
       )}
 
@@ -305,9 +307,11 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
           >
             ← Back
           </button>
-          <EmployeeMessagesScreen 
-            onOpenConversation={(id) => console.log('Open conversation:', id)}
-          />
+          <div style={{ paddingTop: '50px' }}>
+            <EmployeeMessagesScreen 
+              onOpenConversation={(id) => console.log('Open conversation:', id)}
+            />
+          </div>
         </div>
       )}
 

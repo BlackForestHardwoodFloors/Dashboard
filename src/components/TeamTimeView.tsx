@@ -48,7 +48,7 @@ export default function TeamTimeView() {
       try {
         setLoading(true);
         // In real app, fetch from your API
-        // const response = await fetch('http://localhost:3001/api/time-entries/team');
+        // const response = await fetch('http://35.92.33.215:3001/api/time-entries/team');
         // const data = await response.json();
         // setTeamEntries(data);
         

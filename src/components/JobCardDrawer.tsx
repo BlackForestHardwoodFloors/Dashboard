@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, User, MapPin, Calendar, FileText, Clock, MessageSquare, Phone, Mail, Home, Briefcase, ChevronRight, ChevronLeft, AlertCircle, Send, Camera, Clipboard, ExternalLink, Building2, Loader, Check, Pencil, Users, UserCheck, Truck, Trash2 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://35.92.33.215:3001';
 
 // Foreman colors for job assignments
 const FOREMAN_COLORS: Record<string, string> = {
