@@ -3,7 +3,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { FullDashboard } from './components/FullDashboard';
 import TimeLogsPage from './components/TimeLogsPage';
 import ClientsPage from './components/ClientsPage';
-import CalendarPage from './components/CalendarPage';
+import CalendarPage from './CalendarPage';
 import PhotosPage from './components/PhotosPage';
 import MessagesPage from './components/MessagesPage';
 import QuotesPage from './components/QuotesPage';
