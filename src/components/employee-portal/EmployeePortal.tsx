@@ -387,51 +387,6 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
         </div>
       )}
 
-      {/* Floating Camera Button - CompanyCam Blue */}
-      <button
-        onClick={() => setIsCameraOpen(true)}
-        style={{
-          position: 'fixed',
-          bottom: 'max(24px, env(safe-area-inset-bottom))',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '64px',
-          height: '64px',
-          borderRadius: '50%',
-          backgroundColor: CAMERA_BLUE,
-          border: 'none',
-          boxShadow: '0 4px 16px rgba(0, 163, 255, 0.4)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 100,
-          transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateX(-50%) scale(1.05)';
-          e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 163, 255, 0.5)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateX(-50%) scale(1)';
-          e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 163, 255, 0.4)';
-        }}
-      >
-        <svg
-          width="28"
-          height="28"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#FFFFFF"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-          <circle cx="12" cy="13" r="4" />
-        </svg>
-      </button>
-
       {/* Camera Screen */}
       <CameraCaptureScreen
         isOpen={isCameraOpen}
@@ -485,7 +440,7 @@ function ProfileMenuItem({ icon, label, colors, onClick }: {
 // Main export with ThemeProvider wrapper
 export function EmployeePortal({ onNavigate }: { onNavigate?: (page: string) => void }) {
   return (
-    <ThemeProvider defaultTheme="system">
+    <ThemeProvider defaultTheme="dark">
       <EmployeePortalInner onNavigate={onNavigate} />
     </ThemeProvider>
   );

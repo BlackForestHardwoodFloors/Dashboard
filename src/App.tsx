@@ -20,6 +20,7 @@ import CustomerLoginPage from './components/CustomerLoginPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EmployeePortal } from './components/employee-portal/EmployeePortal';
 import CommunicationHubPage from './components/CommunicationHubPage';
+import P4PGrowthPage from './components/P4PGrowthPage';
 // import { PortalPreview } from './components/PortalPreview'; // Uncomment if you have PortalPreview
 import './styles/globals.css';
 
@@ -40,7 +41,8 @@ type ViewType =
   | 'items'
   | 'vendors'
   | 'reviews'
-  | 'settings';
+  | 'settings'
+  | 'p4p-growth';
 
 type PortalType = 'admin' | 'employee' | 'customer';
 type LoginPageType = 'admin-login' | 'employee-login' | 'customer-login' | null;
@@ -56,8 +58,8 @@ interface User {
 
 function AppContent() {
   const { theme, toggleTheme, colors } = useTheme();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [user, setUser] = useState<User | null>({ id: 1, firstName: 'Dev', lastName: 'User', email: 'dev@test.com', role: 'Admin', portalType: 'admin' });
   const [loginError, setLoginError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentPortal, setCurrentPortal] = useState<PortalType>('admin');
@@ -90,15 +92,15 @@ function AppContent() {
       setLoginPage('admin-login');
     }
 
-    // Check for existing session
-    const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
-    if (storedUser && storedToken) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setIsLoggedIn(true);
-      setCurrentPortal(parsedUser.portalType || 'admin');
-    }
+    // Check for existing session - DISABLED FOR DEV
+    // const storedUser = localStorage.getItem('user');
+    // const storedToken = localStorage.getItem('token');
+    // if (storedUser && storedToken) {
+    //   const parsedUser = JSON.parse(storedUser);
+    //   setUser(parsedUser);
+    //   setIsLoggedIn(true);
+    //   setCurrentPortal(parsedUser.portalType || 'admin');
+    // }
   }, []);
 
   // If in preview mode, show the Portal Preview (uncomment if you have PortalPreview)
@@ -235,6 +237,8 @@ function AppContent() {
       'Communications': 'communications',
       'CommunicationHub': 'communications',
       'Communication Hub': 'communications',
+      'P4P Growth': 'p4p-growth',
+      'P4PGrowth': 'p4p-growth',
     };
 
     // Handle mode switching
@@ -245,18 +249,23 @@ function AppContent() {
       setCurrentPortal('admin');
       setCurrentView('dashboard');
       return;
-    } else if (page === 'Mode/Employee') {
+    }
+
+    if (page === 'Mode/Employee') {
       const updatedUser = { ...user, portalType: 'employee' as const };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);
       setCurrentPortal('employee');
       setCurrentView('dashboard');
       return;
-    } else if (page === 'Mode/Customer') {
+    }
+
+    if (page === 'Mode/Customer') {
       const updatedUser = { ...user, portalType: 'customer' as const };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);
       setCurrentPortal('customer');
+      setCurrentView('dashboard');
       return;
     }
 
@@ -301,6 +310,8 @@ function AppContent() {
         return <VendorsPage onNavigate={handleNavigate} />;
       case 'settings':
         return <SettingsPage onNavigate={handleNavigate} />;
+      case 'p4p-growth':
+        return <P4PGrowthPage />;
       case 'reviews':
         return (
           <div style={{ marginLeft: '200px', padding: '24px', minHeight: '100vh', backgroundColor: colors.bgPrimary }}>

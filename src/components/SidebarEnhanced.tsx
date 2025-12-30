@@ -51,7 +51,10 @@ import {
   ListOrdered,
   UserCog,
   HardHat,
-  LayoutDashboard
+  LayoutDashboard,
+  TrendingUp,
+  GraduationCap,
+  Target
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
@@ -283,6 +286,13 @@ const colorSets: Record<string, { base: string; highlight: string; shadow: strin
     shadow: '#A8801C',
     hover: '#E2B542',
     active: '#AF861C'
+  },
+  p4pGrowth: {
+    base: '#14B8A6',
+    highlight: '#5EEAD4',
+    shadow: '#0D9488',
+    hover: '#2DD4BF',
+    active: '#0F766E'
   },
   settings: {
     base: '#78909C',
@@ -554,13 +564,13 @@ export function SidebarEnhanced({
       label: 'Time Sheet', 
       path: 'Time Sheet',
       colorKey: 'timeSheet',
-      subItems: effectiveRole === 'admin' || effectiveRole === 'manager' ? [
+      subItems: [
         { label: 'Time Logs', icon: Clock3, path: 'Time Sheet' },
         { label: 'Wage Rate', icon: DollarSign, path: 'Time Sheet/WageRate' },
         { label: 'General Tasks', icon: ClipboardList, path: 'Time Sheet/GeneralTasks' },
         { label: 'Weekly Report', icon: BarChart3, path: 'Time Sheet/WeeklyReport' },
         { label: 'Payroll', icon: DollarSign, path: 'Time Sheet/Payroll' }
-      ] : undefined
+      ]
     },
     { icon: Camera, label: 'Photos', path: 'Photos', colorKey: 'photos' },
     { icon: Package, label: 'Items', path: 'Items', colorKey: 'items' },
@@ -585,20 +595,16 @@ export function SidebarEnhanced({
         { label: 'Admin Dashboard', icon: LayoutDashboard, path: 'Mode/Admin' },
         { label: 'Employee Portal', icon: HardHat, path: 'Mode/Employee' },
         { label: 'Customer Portal', icon: UserCog, path: 'Mode/Customer' },
-        ...(effectiveRole === 'admin' ? [
-          { label: 'Employees', icon: Users, path: 'Settings/Employees' },
-          { label: 'Departments', icon: Building, path: 'Settings/Departments' },
-          { label: 'Roles & Permissions', icon: Shield, path: 'Settings/Roles' },
-          { label: 'Taxes', icon: Receipt, path: 'Settings/Taxes' }
-        ] : [])
+        { label: 'Employees', icon: Users, path: 'Settings/Employees' },
+        { label: 'Departments', icon: Building, path: 'Settings/Departments' },
+        { label: 'Roles & Permissions', icon: Shield, path: 'Settings/Roles' },
+        { label: 'Taxes', icon: Receipt, path: 'Settings/Taxes' }
       ]
     }
   ];
 
-  // Filter menu for employees - they only see limited options
-  const filteredMenu = effectiveRole === 'employee' 
-    ? menuConfig.filter(item => ['Dashboard', 'Messages', 'Calendar', 'Jobs', 'Time Sheet', 'Photos'].includes(item.label))
-    : menuConfig;
+  // Show full menu for all users (no filtering)
+  const filteredMenu = menuConfig;
 
   const toggleExpand = (label: string) => {
     setExpandedMenus(prev => 

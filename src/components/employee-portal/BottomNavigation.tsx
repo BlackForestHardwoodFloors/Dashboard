@@ -1,4 +1,4 @@
-import { Camera, Briefcase, Image as ImageIcon, MessageSquare, User } from 'lucide-react';
+import { Briefcase, Image as ImageIcon, MessageSquare, User } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 
 type Tab = 'jobs' | 'photos' | 'messages' | 'me';
@@ -6,11 +6,10 @@ type Tab = 'jobs' | 'photos' | 'messages' | 'me';
 interface BottomNavigationProps {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
-  onCameraPress?: () => void;
   unreadMessages?: number;
 }
 
-export function BottomNavigation({ activeTab, onTabChange, onCameraPress, unreadMessages = 0 }: BottomNavigationProps) {
+export function BottomNavigation({ activeTab, onTabChange, unreadMessages = 0 }: BottomNavigationProps) {
   const { colors, employeeColor } = useTheme();
 
   const NavButton = ({ tab, icon: Icon, label, badge }: { tab: Tab; icon: any; label: string; badge?: number }) => (
@@ -97,38 +96,6 @@ export function BottomNavigation({ activeTab, onTabChange, onCameraPress, unread
       }}>
         <NavButton tab="jobs" icon={Briefcase} label="Jobs" />
         <NavButton tab="photos" icon={ImageIcon} label="Photos" />
-
-        {/* Center Camera Button */}
-        <button
-          onClick={onCameraPress}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '2px',
-            padding: '0',
-            backgroundColor: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            marginTop: '-24px'
-          }}
-        >
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            backgroundColor: employeeColor,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: `0 4px 16px ${employeeColor}66`,
-            border: `4px solid ${colors.backgroundSecondary}`,
-            transition: 'background-color 0.3s ease'
-          }}>
-            <Camera size={24} color="#FFFFFF" strokeWidth={2.5} />
-          </div>
-        </button>
-
         <NavButton tab="messages" icon={MessageSquare} label="Messages" badge={unreadMessages} />
         <NavButton tab="me" icon={User} label="Me" />
       </div>

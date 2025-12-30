@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { BottomNavigation } from './BottomNavigation';
-import { MyJobScreen } from './MyJobScreen';
-import { SafetyGrowthScreen } from './SafetyGrowthScreen';
-import CameraCaptureScreen from './CameraCaptureScreen';
-import { EmployeePhotosScreen } from './EmployeePhotosScreen';
+import { MyJobScreen } from './screens/MyJobScreen';
+import { SafetyGrowthScreen } from '../SafetyGrowthScreen';
+import CameraCaptureScreen from './screens/CameraCaptureScreen';
+import { EmployeePhotosScreen } from '../EmployeePhotosScreen';
 import { EmployeeMessagesScreen } from './EmployeeMessagesScreen';
 import { ThemeProvider, useTheme, ThemeToggleButton } from './ThemeProvider';
 
 type Tab = 'jobs' | 'photos' | 'messages' | 'me';
+
+// CompanyCam Blue Color
+const CAMERA_BLUE = '#00A3FF';
 
 // Sample jobs (in production, fetch from API)
 const initialJobs = [
@@ -121,7 +123,7 @@ const initialPhotos = [
 ];
 
 // Inner component that uses theme
-function EmployeePortalInner() {
+function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { colors, employeeColor } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>('jobs');
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -237,82 +239,153 @@ function EmployeePortalInner() {
           onOpenCamera={openCamera}
           onOpenPhotos={openPhotos}
           onTabChange={handleTabChange}
+          onNavigate={onNavigate}
         />
       )}
 
       {activeTab === 'photos' && (
-        <EmployeePhotosScreen
-          photos={photos}
-          jobs={jobs.map(j => ({ id: j.id, name: j.name }))}
-          onTakePhoto={() => setIsCameraOpen(true)}
-          filterJobId={filterJobId}
-        />
-      )}
-
-      {activeTab === 'messages' && (
-        <EmployeeMessagesScreen 
-          onOpenConversation={(id) => console.log('Open conversation:', id)}
-        />
-      )}
-
-      {activeTab === 'me' && (
-        <div style={{ padding: '80px 20px 120px', textAlign: 'center' }}>
-          {/* Profile Avatar */}
-          <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            backgroundColor: employeeColor,
-            margin: '0 auto 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '28px',
-            fontWeight: '700',
-            color: '#FFFFFF'
-          }}>
-            MJ
-          </div>
-          <h2 style={{ color: colors.text, marginBottom: '4px' }}>Mike Johnson</h2>
-          <p style={{ color: colors.textSecondary, marginBottom: '32px' }}>Technician</p>
-          
-          {/* Profile Menu Items */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '320px', margin: '0 auto' }}>
-            <ProfileMenuItem 
-              icon="⏱️" 
-              label="Time Tracking" 
-              colors={colors}
-              onClick={() => console.log('Time Tracking')}
-            />
-            <ProfileMenuItem 
-              icon="👷" 
-              label="Team Activity" 
-              colors={colors}
-              onClick={() => console.log('Team Activity')}
-            />
-            <ProfileMenuItem 
-              icon="🛡️" 
-              label="Safety & Growth" 
-              colors={colors}
-              onClick={() => console.log('Safety')}
-            />
-            <ProfileMenuItem 
-              icon="⚙️" 
-              label="Settings" 
-              colors={colors}
-              onClick={() => console.log('Settings')}
-            />
-          </div>
+        <div style={{ position: 'relative' }}>
+          {/* Back to Portal button */}
+          <button
+            onClick={() => {
+              setActiveTab('jobs');
+              setFilterJobId(undefined);
+            }}
+            style={{
+              position: 'fixed',
+              top: '12px',
+              left: '12px',
+              zIndex: 1000,
+              padding: '10px 16px',
+              backgroundColor: '#4F6A41',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+            }}
+          >
+            ← Back
+          </button>
+          <EmployeePhotosScreen
+            photos={photos}
+            jobs={jobs.map(j => ({ id: j.id, name: j.name }))}
+            onTakePhoto={() => setIsCameraOpen(true)}
+            filterJobId={filterJobId}
+          />
         </div>
       )}
 
-      {/* Bottom Navigation */}
-      <BottomNavigation
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        onCameraPress={() => setIsCameraOpen(true)}
-        unreadMessages={1}
-      />
+      {activeTab === 'messages' && (
+        <div style={{ position: 'relative' }}>
+          {/* Back to Portal button */}
+          <button
+            onClick={() => setActiveTab('jobs')}
+            style={{
+              position: 'fixed',
+              top: '12px',
+              left: '12px',
+              zIndex: 1000,
+              padding: '10px 16px',
+              backgroundColor: '#4F6A41',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+            }}
+          >
+            ← Back
+          </button>
+          <EmployeeMessagesScreen 
+            onOpenConversation={(id) => console.log('Open conversation:', id)}
+          />
+        </div>
+      )}
+
+      {activeTab === 'me' && (
+        <div style={{ position: 'relative' }}>
+          {/* Back to Portal button */}
+          <button
+            onClick={() => setActiveTab('jobs')}
+            style={{
+              position: 'fixed',
+              top: '12px',
+              left: '12px',
+              zIndex: 1000,
+              padding: '10px 16px',
+              backgroundColor: '#4F6A41',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+            }}
+          >
+            ← Back
+          </button>
+          <div style={{ padding: '80px 20px 120px', textAlign: 'center' }}>
+            {/* Profile Avatar */}
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              backgroundColor: employeeColor,
+              margin: '0 auto 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '28px',
+              fontWeight: '700',
+              color: '#FFFFFF'
+            }}>
+              MJ
+            </div>
+            <h2 style={{ color: colors.text, marginBottom: '4px' }}>Mike Johnson</h2>
+            <p style={{ color: colors.textSecondary, marginBottom: '32px' }}>Technician</p>
+            
+            {/* Profile Menu Items */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '320px', margin: '0 auto' }}>
+              <ProfileMenuItem 
+                icon="⏱️" 
+                label="Time Tracking" 
+                colors={colors}
+                onClick={() => console.log('Time Tracking')}
+              />
+              <ProfileMenuItem 
+                icon="👷" 
+                label="Team Activity" 
+                colors={colors}
+                onClick={() => console.log('Team Activity')}
+              />
+              <ProfileMenuItem 
+                icon="🛡️" 
+                label="Safety & Growth" 
+                colors={colors}
+                onClick={() => console.log('Safety')}
+              />
+              <ProfileMenuItem 
+                icon="⚙️" 
+                label="Settings" 
+                colors={colors}
+                onClick={() => console.log('Settings')}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Camera Screen */}
       <CameraCaptureScreen
@@ -365,10 +438,10 @@ function ProfileMenuItem({ icon, label, colors, onClick }: {
 }
 
 // Main export with ThemeProvider wrapper
-export function EmployeePortal() {
+export function EmployeePortal({ onNavigate }: { onNavigate?: (page: string) => void }) {
   return (
     <ThemeProvider defaultTheme="system">
-      <EmployeePortalInner />
+      <EmployeePortalInner onNavigate={onNavigate} />
     </ThemeProvider>
   );
 }

@@ -33,6 +33,7 @@ interface JobDetailScreenProps {
   onCreateChangeOrder: (changeOrder: Omit<ChangeOrder, 'id' | 'createdAt' | 'status'>) => void;
   onStainSignOff: (signatureData: string) => void;
   onSendMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
+  onNavigate?: (page: string) => void;
 }
 
 type ActiveSection = 'details' | 'photos' | 'change-order' | 'stain-signoff' | 'msds' | 'message';
@@ -44,7 +45,8 @@ export function JobDetailScreen({
   onOpenCamera,
   onCreateChangeOrder,
   onStainSignOff,
-  onSendMessage
+  onSendMessage,
+  onNavigate
 }: JobDetailScreenProps) {
   const { colors } = useTheme();
   const [activeSection, setActiveSection] = useState<ActiveSection>('details');
@@ -52,7 +54,7 @@ export function JobDetailScreen({
   const renderContent = () => {
     switch (activeSection) {
       case 'details':
-        return <DetailsSection job={job} photos={photos} onOpenCamera={onOpenCamera} colors={colors} />;
+        return <DetailsSection job={job} photos={photos} onOpenCamera={onOpenCamera} colors={colors} onNavigate={onNavigate} />;
       case 'photos':
         return <PhotosSection photos={photos} onOpenCamera={onOpenCamera} colors={colors} />;
       case 'change-order':
@@ -200,9 +202,154 @@ function ActionButton({ icon: Icon, label, onClick, colors, highlight }: any) {
 }
 
 // Details Section
-function DetailsSection({ job, photos, onOpenCamera, colors }: any) {
+function DetailsSection({ job, photos, onOpenCamera, colors, onNavigate }: any) {
   return (
     <div style={{ padding: '20px', paddingBottom: '120px' }}>
+      {/* Quick Navigation Buttons - Row 1: Calendar, Photos, Messages, Me */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr 1fr 1fr',
+        gap: '10px',
+        marginBottom: '10px'
+      }}>
+        <button
+          onClick={() => onNavigate?.('Calendar')}
+          style={{
+            padding: '12px 8px',
+            backgroundColor: '#3B9CAA',
+            border: 'none',
+            borderRadius: '12px',
+            color: '#FFFFFF',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '4px'
+          }}
+        >
+          <Calendar size={20} />
+          <span style={{ fontSize: '11px', fontWeight: '700' }}>Calendar</span>
+        </button>
+
+        <button
+          onClick={() => onNavigate?.('Photos')}
+          style={{
+            padding: '12px 8px',
+            backgroundColor: '#0F7BFF',
+            border: 'none',
+            borderRadius: '12px',
+            color: '#FFFFFF',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '4px'
+          }}
+        >
+          <FileText size={20} />
+          <span style={{ fontSize: '11px', fontWeight: '700' }}>Photos</span>
+        </button>
+
+        <button
+          onClick={() => onNavigate?.('Messages')}
+          style={{
+            padding: '12px 8px',
+            backgroundColor: '#5B7BB5',
+            border: 'none',
+            borderRadius: '12px',
+            color: '#FFFFFF',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '4px',
+            position: 'relative'
+          }}
+        >
+          <Send size={20} />
+          <span style={{ fontSize: '11px', fontWeight: '700' }}>Messages</span>
+          {/* Notification dot */}
+          <div style={{
+            position: 'absolute',
+            top: '6px',
+            right: '12px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: '#DC2626',
+            border: '2px solid #5B7BB5'
+          }} />
+        </button>
+
+        <button
+          onClick={() => onNavigate?.('Me')}
+          style={{
+            padding: '12px 8px',
+            backgroundColor: '#4F6A41',
+            border: 'none',
+            borderRadius: '12px',
+            color: '#FFFFFF',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '4px'
+          }}
+        >
+          <Users size={20} />
+          <span style={{ fontSize: '11px', fontWeight: '700' }}>Me</span>
+        </button>
+      </div>
+
+      {/* Row 2: P4P/Growth, Time Sheet */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '10px',
+        marginBottom: '16px'
+      }}>
+        <button
+          onClick={() => onNavigate?.('P4P Growth')}
+          style={{
+            padding: '12px 8px',
+            backgroundColor: '#D4A024',
+            border: 'none',
+            borderRadius: '12px',
+            color: '#FFFFFF',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '4px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <DollarSign size={18} />
+            <Clock size={14} />
+          </div>
+          <span style={{ fontSize: '11px', fontWeight: '700' }}>P4P & Growth</span>
+        </button>
+
+        <button
+          onClick={() => onNavigate?.('Time Sheet')}
+          style={{
+            padding: '12px 8px',
+            backgroundColor: '#D76A6A',
+            border: 'none',
+            borderRadius: '12px',
+            color: '#FFFFFF',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '4px'
+          }}
+        >
+          <Clock size={20} />
+          <span style={{ fontSize: '11px', fontWeight: '700' }}>Time Sheet</span>
+        </button>
+      </div>
+
       {/* Progress */}
       <div style={{
         backgroundColor: colors.backgroundSecondary,

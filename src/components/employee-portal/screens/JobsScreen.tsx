@@ -21,9 +21,22 @@ interface JobsScreenProps {
   jobs: Job[];
   onOpenJob: (jobId: string) => void;
   onOpenCamera: (jobId?: string) => void;
+  onOpenCalendar?: () => void;
+  onOpenTimeSheet?: () => void;
+  onOpenP4P?: () => void;
+  onOpenGrowth?: () => void;
 }
 
-export function JobsScreen({ employee, jobs, onOpenJob, onOpenCamera }: JobsScreenProps) {
+export function JobsScreen({ 
+  employee, 
+  jobs, 
+  onOpenJob, 
+  onOpenCamera,
+  onOpenCalendar,
+  onOpenTimeSheet,
+  onOpenP4P,
+  onOpenGrowth
+}: JobsScreenProps) {
   const { colors } = useTheme();
   
   // Get today's date
@@ -39,28 +52,56 @@ export function JobsScreen({ employee, jobs, onOpenJob, onOpenCamera }: JobsScre
   const upcomingJobs = jobs.filter(j => j.status === 'Scheduled');
   const totalJobs = jobs.length;
 
-  // Quick action tiles
-  const quickActions = [
+  // Quick action tiles - Updated layout to match MyJobScreen
+  // Row 1: Calendar, Photos, Messages, Me
+  // Row 2: P4P & Growth, Time Sheet
+  const row1Actions = [
     { 
       id: 'calendar', 
       label: 'Calendar', 
       icon: Calendar, 
-      color: '#4F6A41',
-      bgColor: 'rgba(79, 106, 65, 0.9)'
+      bgColor: '#3B9CAA',
+      onClick: onOpenCalendar
     },
+    { 
+      id: 'photos', 
+      label: 'Photos', 
+      icon: FileText, 
+      bgColor: '#0F7BFF',
+      onClick: () => console.log('Photos')
+    },
+    { 
+      id: 'messages', 
+      label: 'Messages', 
+      icon: Clock, 
+      bgColor: '#5B7BB5',
+      onClick: () => console.log('Messages'),
+      hasNotification: true
+    },
+    { 
+      id: 'me', 
+      label: 'Me', 
+      icon: Users, 
+      bgColor: '#4F6A41',
+      onClick: () => console.log('Me')
+    },
+  ];
+
+  const row2Actions = [
     { 
       id: 'p4p', 
-      label: 'P4P', 
+      label: 'P4P & Growth', 
       icon: DollarSign, 
-      color: '#D4A024',
-      bgColor: 'rgba(212, 160, 36, 0.9)'
+      secondIcon: TrendingUp,
+      bgColor: '#D4A024',
+      onClick: onOpenP4P
     },
     { 
-      id: 'growth', 
-      label: 'Growth', 
-      icon: TrendingUp, 
-      color: '#0F7BFF',
-      bgColor: 'rgba(15, 123, 255, 0.9)'
+      id: 'timesheet', 
+      label: 'Time Sheet', 
+      icon: Clock, 
+      bgColor: '#D76A6A',
+      onClick: onOpenTimeSheet
     },
   ];
 
@@ -93,38 +134,82 @@ export function JobsScreen({ employee, jobs, onOpenJob, onOpenCamera }: JobsScre
           {dateString}
         </p>
 
-        {/* Quick Action Tiles */}
+        {/* Quick Navigation Buttons - Row 1: Calendar, Photos, Messages, Me */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '12px',
-          marginBottom: '24px'
+          gridTemplateColumns: '1fr 1fr 1fr 1fr',
+          gap: '10px',
+          marginBottom: '10px'
         }}>
-          {quickActions.map(action => (
+          {row1Actions.map(action => (
             <button
               key={action.id}
-              onClick={() => console.log(`Open ${action.id}`)}
+              onClick={() => action.onClick?.()}
               style={{
-                padding: '20px 12px',
+                padding: '12px 8px',
                 backgroundColor: action.bgColor,
                 border: 'none',
-                borderRadius: '16px',
+                borderRadius: '12px',
+                color: '#FFFFFF',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '8px',
-                transition: 'transform 0.2s, opacity 0.2s'
+                gap: '4px',
+                position: 'relative'
               }}
             >
-              <action.icon size={28} color="#FFFFFF" />
-              <span style={{
+              <action.icon size={20} />
+              <span style={{ fontSize: '11px', fontWeight: '700' }}>{action.label}</span>
+              {action.hasNotification && (
+                <div style={{
+                  position: 'absolute',
+                  top: '6px',
+                  right: '12px',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: '#DC2626',
+                  border: `2px solid ${action.bgColor}`
+                }} />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Row 2: P4P & Growth, Time Sheet */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '10px',
+          marginBottom: '24px'
+        }}>
+          {row2Actions.map(action => (
+            <button
+              key={action.id}
+              onClick={() => action.onClick?.()}
+              style={{
+                padding: '12px 8px',
+                backgroundColor: action.bgColor,
+                border: 'none',
+                borderRadius: '12px',
                 color: '#FFFFFF',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}>
-                {action.label}
-              </span>
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              {action.secondIcon ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <action.icon size={18} />
+                  <action.secondIcon size={14} />
+                </div>
+              ) : (
+                <action.icon size={20} />
+              )}
+              <span style={{ fontSize: '11px', fontWeight: '700' }}>{action.label}</span>
             </button>
           ))}
         </div>
