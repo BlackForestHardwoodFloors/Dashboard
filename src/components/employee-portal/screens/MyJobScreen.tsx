@@ -22,6 +22,31 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
   const [hoveredProgressJobId, setHoveredProgressJobId] = useState<number | null>(null);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<{[key: number]: number}>({});
   const [stainSignOffJobId, setStainSignOffJobId] = useState<number | null>(null);
+  const [showRoomSelector, setShowRoomSelector] = useState<number | null>(null);
+  const [showCustomRoomInput, setShowCustomRoomInput] = useState(false);
+  const [customRoomName, setCustomRoomName] = useState('');
+  const [customRooms, setCustomRooms] = useState<string[]>([]);
+
+  // Room/Area options for photo tagging
+  const roomOptions = [
+    { id: 'entry', label: 'Entry', icon: '🚪' },
+    { id: 'living-room', label: 'Living Room', icon: '🛋️' },
+    { id: 'family-room', label: 'Family Room', icon: '🛋️' },
+    { id: 'great-room', label: 'Great Room', icon: '🏠' },
+    { id: 'dining-room', label: 'Dining Room', icon: '🍽️' },
+    { id: 'hallway', label: 'Hallway', icon: '🚶' },
+    { id: 'kitchen', label: 'Kitchen', icon: '🍳' },
+    { id: 'bathroom', label: 'Bathroom', icon: '🚿' },
+    { id: 'master-bedroom', label: 'Master Bedroom', icon: '🛏️' },
+    { id: 'one-bedroom', label: 'One Bedroom', icon: '🛏️' },
+    { id: 'two-bedrooms', label: 'Two Bedrooms', icon: '🛏️' },
+    { id: 'three-bedrooms', label: 'Three Bedrooms', icon: '🛏️' },
+    { id: 'four-bedrooms', label: 'Four Bedrooms', icon: '🛏️' },
+    { id: 'five-bedrooms', label: 'Five Bedrooms', icon: '🛏️' },
+    { id: 'office', label: 'Office', icon: '💼' },
+    { id: 'laundry-room', label: 'Laundry Room', icon: '🧺' },
+    { id: 'others', label: 'Others', icon: '📍' },
+  ];
 
   // Mock data - would come from API/props in real app
   const employeeData = {
@@ -528,20 +553,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                             border: '2px solid #0F7BFF',
                           }}
                         >
-                          <img 
-                            src={`https://maps.googleapis.com/maps/api/streetview?size=200x200&location=${encodeURIComponent(job.address)}&key=AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`}
-                            alt="Street View"
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                            }}
-                            onError={(e) => {
-                              // Fallback to a placeholder if Street View fails
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                          {/* Fallback/Overlay with house icon */}
+                          {/* Fallback with house icon - shows behind image */}
                           <div style={{
                             position: 'absolute',
                             top: 0,
@@ -552,6 +564,7 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                             alignItems: 'center',
                             justifyContent: 'center',
                             background: 'linear-gradient(135deg, #3a5a3a 0%, #2a4a2a 100%)',
+                            zIndex: 1,
                           }}>
                             <div style={{
                               fontSize: '36px',
@@ -559,6 +572,21 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
                               🏠
                             </div>
                           </div>
+                          <img 
+                            src={`https://maps.googleapis.com/maps/api/streetview?size=200x200&location=${encodeURIComponent(job.address)}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`}
+                            alt="Street View"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              position: 'relative',
+                              zIndex: 2,
+                            }}
+                            onError={(e) => {
+                              // Hide image if Street View fails, showing fallback
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
                         </div>
                       </div>
                     </div>
@@ -753,42 +781,250 @@ export function MyJobScreen({ onOpenCamera, onOpenPhotos, onTabChange, onNavigat
 
                     {/* Take Photo Button - Blue filled */}
                     {isExpanded && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenCamera?.(job.jobId);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '16px',
-                          backgroundColor: '#0F7BFF',
-                          border: 'none',
-                          borderRadius: '12px',
-                          color: '#FFFFFF',
-                          fontSize: '16px',
-                          fontWeight: '700',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '10px',
-                          marginBottom: '12px',
-                        }}
-                      >
-                        <CameraIcon size={22} />
-                        <span>Take Photo</span>
-                        {job.photoCount > 0 && (
-                          <span style={{
-                            backgroundColor: 'rgba(255,255,255,0.25)',
-                            padding: '2px 10px',
-                            borderRadius: '10px',
-                            fontSize: '14px',
-                            marginLeft: '4px',
-                          }}>
-                            {job.photoCount}
-                          </span>
+                      <div style={{ position: 'relative', marginBottom: '12px' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowRoomSelector(showRoomSelector === job.id ? null : job.id);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '16px',
+                            backgroundColor: '#0F7BFF',
+                            border: 'none',
+                            borderRadius: '12px',
+                            color: '#FFFFFF',
+                            fontSize: '16px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '10px',
+                          }}
+                        >
+                          <CameraIcon size={22} />
+                          <span>Take Photo</span>
+                          {job.photoCount > 0 && (
+                            <span style={{
+                              backgroundColor: 'rgba(255,255,255,0.25)',
+                              padding: '2px 10px',
+                              borderRadius: '10px',
+                              fontSize: '14px',
+                              marginLeft: '4px',
+                            }}>
+                              {job.photoCount}
+                            </span>
+                          )}
+                        </button>
+
+                        {/* Room Selector Popup */}
+                        {showRoomSelector === job.id && (
+                          <div 
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              position: 'absolute',
+                              top: '100%',
+                              left: 0,
+                              right: 0,
+                              marginTop: '8px',
+                              backgroundColor: colors.backgroundSecondary,
+                              border: `1px solid ${colors.border}`,
+                              borderRadius: '12px',
+                              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                              zIndex: 100,
+                              padding: '12px',
+                              maxHeight: '300px',
+                              overflowY: 'auto'
+                            }}
+                          >
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '12px',
+                              paddingBottom: '8px',
+                              borderBottom: `1px solid ${colors.border}`
+                            }}>
+                              <span style={{ color: colors.text, fontSize: '14px', fontWeight: '700' }}>
+                                Select Room/Area
+                              </span>
+                              <button
+                                onClick={() => setShowRoomSelector(null)}
+                                style={{
+                                  backgroundColor: 'transparent',
+                                  border: 'none',
+                                  color: colors.textSecondary,
+                                  cursor: 'pointer',
+                                  fontSize: '18px'
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(2, 1fr)',
+                              gap: '8px'
+                            }}>
+                              {roomOptions.filter(r => r.id !== 'others').map(room => (
+                                <button
+                                  key={room.id}
+                                  onClick={() => {
+                                    setShowRoomSelector(null);
+                                    setShowCustomRoomInput(false);
+                                    onOpenCamera?.(job.jobId + '|' + room.label);
+                                  }}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '12px',
+                                    backgroundColor: colors.backgroundTertiary,
+                                    border: `1px solid ${colors.border}`,
+                                    borderRadius: '8px',
+                                    color: colors.text,
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    textAlign: 'left'
+                                  }}
+                                >
+                                  <span style={{ fontSize: '18px' }}>{room.icon}</span>
+                                  {room.label}
+                                </button>
+                              ))}
+                              
+                              {/* Custom rooms added by user */}
+                              {customRooms.map(room => (
+                                <button
+                                  key={room}
+                                  onClick={() => {
+                                    setShowRoomSelector(null);
+                                    setShowCustomRoomInput(false);
+                                    onOpenCamera?.(job.jobId + '|' + room);
+                                  }}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '12px',
+                                    backgroundColor: '#4F6A41',
+                                    border: '1px solid #4F6A41',
+                                    borderRadius: '8px',
+                                    color: '#FFFFFF',
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    textAlign: 'left'
+                                  }}
+                                >
+                                  <span style={{ fontSize: '18px' }}>📍</span>
+                                  {room}
+                                </button>
+                              ))}
+
+                              {/* Others / Add New button */}
+                              <button
+                                onClick={() => setShowCustomRoomInput(!showCustomRoomInput)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '12px',
+                                  backgroundColor: showCustomRoomInput ? '#0F7BFF' : colors.backgroundTertiary,
+                                  border: `1px solid ${showCustomRoomInput ? '#0F7BFF' : colors.border}`,
+                                  borderRadius: '8px',
+                                  color: showCustomRoomInput ? '#FFFFFF' : colors.text,
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  textAlign: 'left'
+                                }}
+                              >
+                                <span style={{ fontSize: '18px' }}>➕</span>
+                                Add New Room
+                              </button>
+                            </div>
+
+                            {/* Custom Room Input */}
+                            {showCustomRoomInput && (
+                              <div style={{
+                                marginTop: '12px',
+                                padding: '12px',
+                                backgroundColor: colors.backgroundTertiary,
+                                borderRadius: '8px',
+                                border: `1px solid ${colors.border}`
+                              }}>
+                                <label style={{
+                                  color: colors.textSecondary,
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  display: 'block',
+                                  marginBottom: '8px'
+                                }}>
+                                  Enter room name:
+                                </label>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <input
+                                    type="text"
+                                    value={customRoomName}
+                                    onChange={(e) => setCustomRoomName(e.target.value)}
+                                    placeholder="e.g., Sunroom, Bonus Room..."
+                                    style={{
+                                      flex: 1,
+                                      padding: '10px 12px',
+                                      backgroundColor: colors.background,
+                                      border: `1px solid ${colors.border}`,
+                                      borderRadius: '6px',
+                                      color: colors.text,
+                                      fontSize: '14px'
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && customRoomName.trim()) {
+                                        if (!customRooms.includes(customRoomName.trim())) {
+                                          setCustomRooms([...customRooms, customRoomName.trim()]);
+                                        }
+                                        onOpenCamera?.(job.jobId + '|' + customRoomName.trim());
+                                        setCustomRoomName('');
+                                        setShowCustomRoomInput(false);
+                                        setShowRoomSelector(null);
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      if (customRoomName.trim()) {
+                                        if (!customRooms.includes(customRoomName.trim())) {
+                                          setCustomRooms([...customRooms, customRoomName.trim()]);
+                                        }
+                                        onOpenCamera?.(job.jobId + '|' + customRoomName.trim());
+                                        setCustomRoomName('');
+                                        setShowCustomRoomInput(false);
+                                        setShowRoomSelector(null);
+                                      }
+                                    }}
+                                    disabled={!customRoomName.trim()}
+                                    style={{
+                                      padding: '10px 16px',
+                                      backgroundColor: customRoomName.trim() ? '#4F6A41' : colors.backgroundTertiary,
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      color: customRoomName.trim() ? '#FFFFFF' : colors.textTertiary,
+                                      fontSize: '14px',
+                                      fontWeight: '600',
+                                      cursor: customRoomName.trim() ? 'pointer' : 'default'
+                                    }}
+                                  >
+                                    Add & Take Photo
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
-                      </button>
+                      </div>
                     )}
 
                     {/* Job Briefing Button */}
@@ -1264,6 +1500,7 @@ function StainSignOffModal({ isOpen, onClose, jobName, colors }: {
   const [customerPhone, setCustomerPhone] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
+  const [openPercentagePopup, setOpenPercentagePopup] = useState<string | null>(null);
 
   // DuraSeal stain color options
   const duraSealColors = [
@@ -1297,24 +1534,120 @@ function StainSignOffModal({ isOpen, onClose, jobName, colors }: {
 
   const addStainColor = () => {
     if (stainColors.length < 4) {
-      setStainColors([...stainColors, { color: '', percentage: 0 }]);
+      // Redistribute percentages evenly when adding a new color
+      const newCount = stainColors.length + 1;
+      const evenPercentage = Math.floor(100 / newCount);
+      const remainder = 100 - (evenPercentage * newCount);
+      
+      const redistributed = stainColors.map((sc, i) => ({
+        ...sc,
+        percentage: evenPercentage + (i === 0 ? remainder : 0)
+      }));
+      
+      setStainColors([...redistributed, { color: '', percentage: evenPercentage }]);
     }
   };
 
   const removeStainColor = (index: number) => {
     if (stainColors.length > 1) {
       const newColors = stainColors.filter((_, i) => i !== index);
+      
+      // If only one color left, set it to 100%
+      if (newColors.length === 1) {
+        newColors[0].percentage = 100;
+      } else {
+        // Redistribute the removed percentage among remaining colors
+        const removedPercentage = stainColors[index].percentage;
+        const addToEach = Math.floor(removedPercentage / newColors.length);
+        const remainder = removedPercentage - (addToEach * newColors.length);
+        
+        newColors.forEach((sc, i) => {
+          sc.percentage += addToEach + (i === 0 ? remainder : 0);
+        });
+      }
+      
       setStainColors(newColors);
     }
   };
 
   const updateStainColor = (index: number, field: 'color' | 'percentage', value: string | number) => {
     const newColors = [...stainColors];
-    newColors[index] = { ...newColors[index], [field]: value };
+    
+    if (field === 'percentage') {
+      const numValue = typeof value === 'string' ? parseInt(value) || 0 : value;
+      
+      // Calculate max allowed for this field (100 minus other colors' percentages)
+      const otherColorsTotal = newColors.reduce((sum, sc, i) => 
+        i !== index ? sum + (sc.percentage || 0) : sum, 0
+      );
+      const maxAllowed = 100 - otherColorsTotal;
+      
+      // Cap the value at maxAllowed
+      newColors[index].percentage = Math.min(Math.max(0, numValue), maxAllowed);
+    } else {
+      newColors[index] = { ...newColors[index], [field]: value };
+    }
+    
     setStainColors(newColors);
   };
 
   const totalPercentage = stainColors.reduce((sum, sc) => sum + (sc.percentage || 0), 0);
+
+  // Function to adjust percentages - when one increases, others decrease proportionally
+  const adjustPercentages = (changedIndex: number, newValue: number) => {
+    const newColors = [...stainColors];
+    const oldValue = newColors[changedIndex].percentage;
+    const difference = newValue - oldValue;
+    
+    // Clamp newValue between 0 and 100
+    const clampedNewValue = Math.max(0, Math.min(100, newValue));
+    
+    if (stainColors.length === 1) {
+      // Only one color, keep at 100
+      newColors[0].percentage = 100;
+    } else {
+      // Set the changed color's new percentage
+      newColors[changedIndex].percentage = clampedNewValue;
+      
+      // Calculate how much to adjust others
+      const actualDifference = clampedNewValue - oldValue;
+      const otherIndices = newColors.map((_, i) => i).filter(i => i !== changedIndex);
+      const otherTotal = otherIndices.reduce((sum, i) => sum + newColors[i].percentage, 0);
+      
+      if (actualDifference > 0 && otherTotal > 0) {
+        // Increasing this one - decrease others proportionally
+        let remaining = actualDifference;
+        otherIndices.forEach((i, idx) => {
+          const proportion = newColors[i].percentage / otherTotal;
+          let decrease = Math.round(actualDifference * proportion);
+          
+          // Last one takes the remainder to ensure total = 100
+          if (idx === otherIndices.length - 1) {
+            decrease = remaining;
+          }
+          
+          decrease = Math.min(decrease, newColors[i].percentage);
+          newColors[i].percentage -= decrease;
+          remaining -= decrease;
+        });
+      } else if (actualDifference < 0) {
+        // Decreasing this one - increase first other color to maintain 100%
+        const increase = Math.abs(actualDifference);
+        newColors[otherIndices[0]].percentage += increase;
+      }
+      
+      // Ensure total equals 100
+      const currentTotal = newColors.reduce((sum, sc) => sum + sc.percentage, 0);
+      if (currentTotal !== 100 && newColors.length > 1) {
+        const diff = 100 - currentTotal;
+        // Add difference to the first color that isn't the changed one
+        const adjustIndex = otherIndices[0];
+        newColors[adjustIndex].percentage = Math.max(0, newColors[adjustIndex].percentage + diff);
+      }
+    }
+    
+    setStainColors(newColors);
+  };
 
   // Signature pad functions
   const startDrawing = (e: any) => {
@@ -1538,33 +1871,74 @@ function StainSignOffModal({ isOpen, onClose, jobName, colors }: {
                   <option value="custom">Custom Mix</option>
                 </select>
 
-                {/* Percentage Input */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  backgroundColor: '#F5F5F5',
-                  border: '1px solid #E0E0E0',
-                  borderRadius: '8px',
-                  padding: '0 12px',
-                  flex: 1
-                }}>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={stainColor.percentage}
-                    onChange={(e) => updateStainColor(index, 'percentage', parseInt(e.target.value) || 0)}
-                    style={{
-                      width: '50px',
-                      padding: '12px 0',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      color: '#333',
-                      fontSize: '14px',
-                      textAlign: 'center'
+                {/* Percentage Input - Click to show popup */}
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => {
+                      const currentOpen = openPercentagePopup === `${index}`;
+                      setOpenPercentagePopup(currentOpen ? null : `${index}`);
                     }}
-                  />
-                  <span style={{ color: '#666', fontSize: '14px' }}>%</span>
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      backgroundColor: '#F5F5F5',
+                      border: '1px solid #E0E0E0',
+                      borderRadius: '8px',
+                      padding: '12px 16px',
+                      gap: '4px',
+                      cursor: 'pointer',
+                      minWidth: '80px',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <span style={{ color: '#333', fontSize: '14px', fontWeight: '600' }}>
+                      {stainColor.percentage}
+                    </span>
+                    <span style={{ color: '#666', fontSize: '14px' }}>%</span>
+                  </button>
+                  
+                  {/* Percentage Popup */}
+                  {openPercentagePopup === `${index}` && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      marginTop: '4px',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E0E0E0',
+                      borderRadius: '10px',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                      zIndex: 100,
+                      padding: '8px',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
+                      gap: '4px',
+                      width: '200px'
+                    }}>
+                      {[5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100].map(pct => (
+                        <button
+                          key={pct}
+                          onClick={() => {
+                            adjustPercentages(index, pct);
+                            setOpenPercentagePopup(null);
+                          }}
+                          style={{
+                            padding: '8px 4px',
+                            backgroundColor: stainColor.percentage === pct ? '#4F6A41' : '#F5F5F5',
+                            border: 'none',
+                            borderRadius: '6px',
+                            color: stainColor.percentage === pct ? '#FFFFFF' : '#333',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {pct}%
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Remove Button */}
@@ -1588,30 +1962,6 @@ function StainSignOffModal({ isOpen, onClose, jobName, colors }: {
                 )}
               </div>
             ))}
-
-            {/* Total Percentage Indicator */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: '8px',
-              padding: '8px 12px',
-              backgroundColor: totalPercentage === 100 ? '#E8F5E9' : '#FFF3E0',
-              borderRadius: '8px'
-            }}>
-              <span style={{ 
-                color: totalPercentage === 100 ? '#2E7D32' : '#E65100', 
-                fontSize: '13px',
-                fontWeight: '600'
-              }}>
-                Total: {totalPercentage}%
-              </span>
-              {totalPercentage !== 100 && (
-                <span style={{ color: '#E65100', fontSize: '12px' }}>
-                  Must equal 100%
-                </span>
-              )}
-            </div>
 
             {/* Add Color Button */}
             {stainColors.length < 4 && (

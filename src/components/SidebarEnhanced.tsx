@@ -52,9 +52,7 @@ import {
   UserCog,
   HardHat,
   LayoutDashboard,
-  TrendingUp,
-  GraduationCap,
-  Target
+  TrendingUp
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
@@ -287,12 +285,12 @@ const colorSets: Record<string, { base: string; highlight: string; shadow: strin
     hover: '#E2B542',
     active: '#AF861C'
   },
-  p4pGrowth: {
-    base: '#14B8A6',
-    highlight: '#5EEAD4',
-    shadow: '#0D9488',
-    hover: '#2DD4BF',
-    active: '#0F766E'
+  p4p: {
+    base: '#2E7D32',
+    highlight: '#66BB6A',
+    shadow: '#1B5E20',
+    hover: '#43A047',
+    active: '#1B5E20'
   },
   settings: {
     base: '#78909C',
@@ -564,15 +562,16 @@ export function SidebarEnhanced({
       label: 'Time Sheet', 
       path: 'Time Sheet',
       colorKey: 'timeSheet',
-      subItems: [
+      subItems: effectiveRole === 'admin' || effectiveRole === 'manager' ? [
         { label: 'Time Logs', icon: Clock3, path: 'Time Sheet' },
         { label: 'Wage Rate', icon: DollarSign, path: 'Time Sheet/WageRate' },
         { label: 'General Tasks', icon: ClipboardList, path: 'Time Sheet/GeneralTasks' },
         { label: 'Weekly Report', icon: BarChart3, path: 'Time Sheet/WeeklyReport' },
         { label: 'Payroll', icon: DollarSign, path: 'Time Sheet/Payroll' }
-      ]
+      ] : undefined
     },
     { icon: Camera, label: 'Photos', path: 'Photos', colorKey: 'photos' },
+    { icon: TrendingUp, label: 'P4P & Growth', path: 'P4P Growth', colorKey: 'p4p' },
     { icon: Package, label: 'Items', path: 'Items', colorKey: 'items' },
     { 
       icon: Building2, 
@@ -595,15 +594,18 @@ export function SidebarEnhanced({
         { label: 'Admin Dashboard', icon: LayoutDashboard, path: 'Mode/Admin' },
         { label: 'Employee Portal', icon: HardHat, path: 'Mode/Employee' },
         { label: 'Customer Portal', icon: UserCog, path: 'Mode/Customer' },
-        { label: 'Employees', icon: Users, path: 'Settings/Employees' },
-        { label: 'Departments', icon: Building, path: 'Settings/Departments' },
-        { label: 'Roles & Permissions', icon: Shield, path: 'Settings/Roles' },
-        { label: 'Taxes', icon: Receipt, path: 'Settings/Taxes' }
+        ...(effectiveRole === 'admin' ? [
+          { label: 'Employees', icon: Users, path: 'Settings/Employees' },
+          { label: 'Departments', icon: Building, path: 'Settings/Departments' },
+          { label: 'Roles & Permissions', icon: Shield, path: 'Settings/Roles' },
+          { label: 'Taxes', icon: Receipt, path: 'Settings/Taxes' }
+        ] : [])
       ]
     }
   ];
 
-  // Show full menu for all users (no filtering)
+  // Always show full menu - the sidebar is only used in admin portal
+  // Employee portal has its own separate navigation
   const filteredMenu = menuConfig;
 
   const toggleExpand = (label: string) => {

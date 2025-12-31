@@ -3,7 +3,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { FullDashboard } from './components/FullDashboard';
 import TimeLogsPage from './components/TimeLogsPage';
 import ClientsPage from './components/ClientsPage';
-import CalendarPage from './CalendarPage';
+import CalendarPage from './components/CalendarPage';
 import PhotosPage from './components/PhotosPage';
 import MessagesPage from './components/MessagesPage';
 import QuotesPage from './components/QuotesPage';
@@ -71,6 +71,16 @@ function AppContent() {
   // Check if we're on preview route
   const [isPreviewMode, setIsPreviewMode] = useState(false);
 
+  // Simple toast notifications (used for "Saved" confirmations)
+  const [toast, setToast] = useState<{ message: string; kind?: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, kind: 'success' | 'error' = 'success') => {
+    setToast({ message, kind });
+    // auto-hide after 3 seconds
+    window.setTimeout(() => setToast(null), 3000);
+  };
+
+
   // Detect which login page to show based on URL
   useEffect(() => {
     const path = window.location.pathname;
@@ -102,6 +112,70 @@ function AppContent() {
     //   setCurrentPortal(parsedUser.portalType || 'admin');
     // }
   }, []);
+
+  // Listen for cross-component navigation requests (e.g., after "Save & Schedule Visit")
+  useEffect(() => {
+    const onNavigate = (e: Event) => {
+      const evt = e as CustomEvent<{ screen?: ViewType | string }>;
+      if (!evt.detail?.screen) return;
+
+      // We keep this intentionally strict so random values can't break the UI.
+      const screen = evt.detail.screen;
+      const allowed: ViewType[] = [
+        'dashboard',
+        'messages',
+        'clients',
+        'calendar',
+        'communications',
+        'quotes',
+        'contracts',
+        'work-orders',
+        'jobs',
+        'items',
+        'vendors',
+        'photos',
+        'time-sheet',
+        'settings'
+      ];
+
+      if (allowed.includes(screen as ViewType)) {
+        setCurrentView(screen as ViewType);
+      }
+    };
+
+    window.addEventListener('boardroom:navigate', onNavigate);
+    return () => window.removeEventListener('boardroom:navigate', onNavigate);
+  }, []);
+
+  // Store a pending "schedule visit" draft so the Calendar can open a prefilled appointment modal on date click.
+  useEffect(() => {
+    const onScheduleVisit = (e: Event) => {
+      const evt = e as CustomEvent<{ client?: any }>;
+      if (!evt.detail?.client) return;
+
+      try {
+        sessionStorage.setItem(
+          'boardroom_pending_visit',
+          JSON.stringify({
+            client: evt.detail.client,
+            createdAt: Date.now()
+          })
+        );
+      } catch {
+        // ignore storage errors
+      }
+
+      // Give immediate feedback
+      showToast('Client saved — click a date on the calendar to schedule the visit.', 'success');
+
+      // Move to calendar view
+      setCurrentView('calendar');
+    };
+
+    window.addEventListener('boardroom:schedule-visit', onScheduleVisit);
+    return () => window.removeEventListener('boardroom:schedule-visit', onScheduleVisit);
+  }, []);
+
 
   // If in preview mode, show the Portal Preview (uncomment if you have PortalPreview)
   // if (isPreviewMode) {
@@ -417,6 +491,30 @@ function AppContent() {
 
     return (
       <div>
+        {toast && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 16,
+              right: 16,
+              zIndex: 10000,
+              padding: '12px 14px',
+              borderRadius: 12,
+              border: '1px solid #2A2A2A',
+              background: toast.kind === 'error' ? '#2b0b0b' : '#0b2b12',
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
+              maxWidth: 360,
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            {toast.message}
+          </div>
+        )}
+
         {/* Back to Employee Portal button */}
         <button
           onClick={() => setCurrentView('dashboard')}
