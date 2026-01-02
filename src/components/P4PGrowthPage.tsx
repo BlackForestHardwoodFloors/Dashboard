@@ -572,13 +572,13 @@ function BonusPayoutTab({ selectedMonth, employees, selectedJob, selectedEmploye
     <div>
       {/* Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ backgroundColor: '#1a2e1a', border: '1px solid #2E7D32', borderRadius: '12px', padding: '20px' }}>
+        <div style={{ backgroundColor: '#2a2a2a', borderRadius: '12px', padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#2E7D3220', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><DollarSign size={20} color="#4CAF50" /></div>
-            <span style={{ color: '#a5d6a7', fontSize: '13px' }}>Eligible to Pay</span>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#10B98120', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><DollarSign size={20} color="#10B981" /></div>
+            <span style={{ color: '#888', fontSize: '13px' }}>Total Bonus Pool</span>
           </div>
-          <p style={{ color: eligibleTotal >= 0 ? '#4CAF50' : '#EF4444', fontSize: '28px', fontWeight: '700', margin: 0 }}>{eligibleTotal >= 0 ? '+' : ''}{formatCurrency(eligibleTotal)}</p>
-          <p style={{ color: '#888', fontSize: '12px', margin: '4px 0 0 0' }}>{eligibleJobs.length} jobs ready</p>
+          <p style={{ color: '#10B981', fontSize: '28px', fontWeight: '700', margin: 0 }}>{formatCurrency(bonusPool)}</p>
+          <p style={{ color: '#888', fontSize: '12px', margin: '4px 0 0 0' }}>{selectedJob ? JOBS.find(j => j.id === selectedJob)?.name : 'All Jobs Combined'}</p>
         </div>
         <div style={{ backgroundColor: '#2a2a2a', borderRadius: '12px', padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
@@ -606,13 +606,12 @@ function BonusPayoutTab({ selectedMonth, employees, selectedJob, selectedEmploye
         </div>
       </div>
 
-      {/* Jobs Panel */}
-      <div style={{ backgroundColor: '#2a2a2a', borderRadius: '12px', marginBottom: '24px', overflow: 'hidden' }}>
-        <div onClick={() => setShowJobsPanel(!showJobsPanel)} style={{ padding: '16px 20px', borderBottom: showJobsPanel ? '1px solid #444' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Briefcase size={20} color="#4F6A41" />
-            <h2 style={{ color: '#fff', fontSize: '16px', fontWeight: '600', margin: 0 }}>Job Bonus Management</h2>
-            <span style={{ backgroundColor: '#4F6A4120', color: '#4CAF50', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>{eligibleJobs.length} eligible</span>
+      {/* Pie Chart and Breakdown */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+        <div style={{ backgroundColor: '#2a2a2a', borderRadius: '12px', padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+            <PieChart size={18} color="#14B8A6" />
+            <h3 style={{ color: '#fff', fontSize: '16px', margin: 0 }}>Bonus Distribution</h3>
           </div>
           <ChevronDown size={20} color="#888" style={{ transform: showJobsPanel ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
         </div>
@@ -683,54 +682,42 @@ function BonusPayoutTab({ selectedMonth, employees, selectedJob, selectedEmploye
           <span style={{ color: '#888', fontSize: '12px', fontWeight: '600', textAlign: 'right' }}>TOTAL POOL</span>
         </div>
 
-        {employeeBonusPools.map((ep, i) => (
-          <div key={ep.employee.id}>
-            <div onClick={() => setExpandedEmployee(expandedEmployee === ep.employee.id ? null : ep.employee.id)} style={{ display: 'grid', gridTemplateColumns: '2fr 0.6fr 0.6fr 0.6fr 0.6fr 0.6fr 1fr 1fr 1fr', padding: '16px 20px', alignItems: 'center', borderBottom: expandedEmployee === ep.employee.id ? 'none' : '1px solid #333', backgroundColor: expandedEmployee === ep.employee.id ? '#3a3a3a' : 'transparent', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ position: 'relative' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: i < 3 ? '#FBBF24' : '#4F6A41', display: 'flex', alignItems: 'center', justifyContent: 'center', color: i < 3 ? '#000' : '#fff', fontWeight: '600', fontSize: '13px' }}>{ep.employee.name.split(' ').map(n => n[0]).join('')}</div>
-                  {ep.employee.isForeman && <div style={{ position: 'absolute', top: '-4px', right: '-4px', width: '18px', height: '18px', borderRadius: '50%', backgroundColor: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Award size={10} color="#fff" /></div>}
-                </div>
-                <div>
-                  <p style={{ color: '#fff', fontWeight: '500', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>{ep.employee.name}{ep.employee.isForeman && <span style={{ fontSize: '10px', backgroundColor: '#8B5CF620', color: '#8B5CF6', padding: '2px 6px', borderRadius: '4px' }}>Foreman</span>}<ChevronDown size={14} color="#888" style={{ transform: expandedEmployee === ep.employee.id ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} /></p>
-                  <p style={{ color: '#888', fontSize: '12px', margin: 0 }}>Level {ep.employee.level} • {ep.jobBreakdown.length} jobs</p>
-                </div>
+        {/* Table Rows */}
+        {bonusBreakdown.map((b, i) => (
+          <div key={b.employee.id} style={{ display: 'grid', gridTemplateColumns: '2fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 1fr', padding: '16px 20px', alignItems: 'center', borderBottom: i < bonusBreakdown.length - 1 ? '1px solid #333' : 'none', backgroundColor: selectedEmployee === b.employee.id ? '#14B8A610' : 'transparent' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ position: 'relative' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: i < 3 ? '#FBBF24' : '#14B8A6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: i < 3 ? '#000' : '#fff', fontWeight: '600', fontSize: '13px' }}>{b.employee.name.split(' ').map(n => n[0]).join('')}</div>
+                {b.employee.isForeman && <div style={{ position: 'absolute', top: '-4px', right: '-4px', width: '18px', height: '18px', borderRadius: '50%', backgroundColor: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Award size={10} color="#fff" /></div>}
               </div>
-              <div style={{ textAlign: 'center' }}><span style={{ color: '#fff', fontSize: '14px' }}>{ep.employee.hoursWorked}</span></div>
-              <div style={{ textAlign: 'center' }}><span style={{ color: '#F97316', fontSize: '14px', fontWeight: '600' }}>{ep.skillMult.toFixed(2)}×</span></div>
-              <div style={{ textAlign: 'center' }}><span style={{ color: '#3B82F6', fontSize: '14px', fontWeight: '600' }}>{ep.evsMult.toFixed(2)}×</span></div>
-              <div style={{ textAlign: 'center' }}><span style={{ color: '#14B8A6', fontSize: '14px', fontWeight: '600' }}>{ep.jvsMult.toFixed(2)}×</span></div>
-              <div style={{ textAlign: 'center' }}><span style={{ color: '#FBBF24', fontSize: '14px', fontWeight: '700' }}>{ep.totalMult.toFixed(2)}×</span></div>
-              <div style={{ textAlign: 'right' }}><span style={{ color: ep.eligibleAmount >= 0 ? '#4CAF50' : '#EF4444', fontSize: '16px', fontWeight: '700' }}>{ep.eligibleAmount >= 0 ? '+' : ''}{formatCurrency(ep.eligibleAmount)}</span></div>
-              <div style={{ textAlign: 'right' }}><span style={{ color: '#3B82F6', fontSize: '16px', fontWeight: '700' }}>{formatCurrency(ep.paidAmount)}</span></div>
-              <div style={{ textAlign: 'right' }}><span style={{ color: ep.totalPool >= 0 ? '#fff' : '#EF4444', fontSize: '18px', fontWeight: '700' }}>{ep.totalPool >= 0 ? '+' : ''}{formatCurrency(ep.totalPool)}</span></div>
+              <div>
+                <p style={{ color: '#fff', fontWeight: '500', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>{b.employee.name}{b.employee.isForeman && <span style={{ fontSize: '10px', backgroundColor: '#8B5CF620', color: '#8B5CF6', padding: '2px 6px', borderRadius: '4px' }}>Foreman</span>}</p>
+                <p style={{ color: '#888', fontSize: '12px', margin: 0 }}>Level {b.employee.level} • {b.employee.department}</p>
+              </div>
             </div>
-            {expandedEmployee === ep.employee.id && (
-              <div style={{ backgroundColor: '#1a1a1a', padding: '16px 20px 16px 72px', borderBottom: '1px solid #333' }}>
-                <p style={{ color: '#888', fontSize: '12px', fontWeight: '600', marginBottom: '12px' }}>JOB BREAKDOWN</p>
-                {ep.jobBreakdown.map(jb => (
-                  <div key={jb.job.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #333' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '600', backgroundColor: jb.isPaid ? '#3B82F620' : jb.bonusAmount >= 0 ? '#4F6A4120' : '#EF444420', color: jb.isPaid ? '#3B82F6' : jb.bonusAmount >= 0 ? '#4CAF50' : '#EF4444' }}>{jb.isPaid ? 'PAID' : 'ELIGIBLE'}</span>
-                      <div>
-                        <p style={{ color: '#fff', fontSize: '13px', margin: 0 }}>{jb.job.name}</p>
-                        <p style={{ color: '#888', fontSize: '11px', margin: 0 }}>{jb.job.client}</p>
-                      </div>
-                    </div>
-                    <span style={{ color: jb.bonusAmount >= 0 ? '#4CAF50' : '#EF4444', fontSize: '15px', fontWeight: '700' }}>{jb.bonusAmount >= 0 ? '+' : ''}{formatCurrency(jb.bonusAmount)}</span>
-                  </div>
-                ))}
+            <div style={{ textAlign: 'center' }}><span style={{ color: '#fff', fontSize: '14px' }}>{b.employee.hoursWorked}</span></div>
+            <div style={{ textAlign: 'center' }}><span style={{ color: '#F97316', fontSize: '14px', fontWeight: '600' }}>{b.skillMult.toFixed(2)}×</span></div>
+            <div style={{ textAlign: 'center' }}><span style={{ color: '#3B82F6', fontSize: '14px', fontWeight: '600' }}>{b.evsMult.toFixed(2)}×</span></div>
+            <div style={{ textAlign: 'center' }}><span style={{ color: '#14B8A6', fontSize: '14px', fontWeight: '600' }}>{b.jvsMult.toFixed(2)}×</span></div>
+            <div style={{ textAlign: 'center' }}><span style={{ color: '#FBBF24', fontSize: '14px', fontWeight: '700' }}>{b.totalMult.toFixed(2)}×</span></div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '60px', height: '6px', backgroundColor: '#333', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${b.sharePercent}%`, backgroundColor: '#10B981', borderRadius: '3px' }} />
+                </div>
+                <span style={{ color: '#fff', fontSize: '13px' }}>{b.sharePercent.toFixed(1)}%</span>
               </div>
-            )}
+            </div>
+            <div style={{ textAlign: 'right' }}><span style={{ color: '#10B981', fontSize: '18px', fontWeight: '700' }}>{formatCurrency(b.bonusAmount)}</span></div>
           </div>
         ))}
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 0.6fr 0.6fr 0.6fr 0.6fr 0.6fr 1fr 1fr 1fr', padding: '16px 20px', alignItems: 'center', backgroundColor: '#1a1a1a', borderTop: '2px solid #444' }}>
           <span style={{ color: '#fff', fontWeight: '600' }}>TOTAL</span>
-          <span></span><span></span><span></span><span></span><span></span>
-          <span style={{ color: totalEligibleEmployeeBonus >= 0 ? '#4CAF50' : '#EF4444', fontSize: '18px', fontWeight: '700', textAlign: 'right' }}>{totalEligibleEmployeeBonus >= 0 ? '+' : ''}{formatCurrency(totalEligibleEmployeeBonus)}</span>
-          <span style={{ color: '#3B82F6', fontSize: '18px', fontWeight: '700', textAlign: 'right' }}>{formatCurrency(totalPaidEmployeeBonus)}</span>
-          <span style={{ color: '#fff', fontSize: '20px', fontWeight: '700', textAlign: 'right' }}>{formatCurrency(totalEligibleEmployeeBonus + totalPaidEmployeeBonus)}</span>
+          <span style={{ color: '#fff', fontSize: '14px', textAlign: 'center', fontWeight: '600' }}>{employees.reduce((sum, e) => sum + e.hoursWorked, 0)}</span>
+          <span></span><span></span><span></span><span></span>
+          <span style={{ color: '#fff', fontSize: '14px', textAlign: 'center', fontWeight: '600' }}>100%</span>
+          <span style={{ color: '#10B981', fontSize: '20px', fontWeight: '700', textAlign: 'right' }}>{formatCurrency(totalBonus)}</span>
         </div>
       </div>
     </div>
@@ -758,7 +745,7 @@ function OverviewTab({ selectedMonth, employees, selectedJob, showGraphs, bonusP
       {/* Filter Badges */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ padding: '6px 14px', backgroundColor: '#4F6A4120', border: '1px solid #4F6A41', borderRadius: '20px', color: '#4CAF50', fontSize: '13px', fontWeight: '500' }}>{monthName} {selectedMonth.year}</span>
+          <span style={{ padding: '6px 14px', backgroundColor: '#14B8A620', border: '1px solid #14B8A6', borderRadius: '20px', color: '#14B8A6', fontSize: '13px', fontWeight: '500' }}>{monthName} {selectedMonth.year}</span>
           {employees.length < EMPLOYEES.length && <span style={{ padding: '6px 14px', backgroundColor: '#3B82F620', border: '1px solid #3B82F6', borderRadius: '20px', color: '#3B82F6', fontSize: '13px', fontWeight: '500' }}>{employees.length} Employee{employees.length !== 1 ? 's' : ''}</span>}
           {selectedJob && <span style={{ padding: '6px 14px', backgroundColor: '#F9731620', border: '1px solid #F97316', borderRadius: '20px', color: '#F97316', fontSize: '13px', fontWeight: '500' }}>Job: {jobs.find(j => j.id === selectedJob)?.name.slice(0, 20)}...</span>}
           <span style={{ padding: '6px 14px', backgroundColor: eligibleBonusTotal >= 0 ? '#10B98120' : '#EF444420', border: `1px solid ${eligibleBonusTotal >= 0 ? '#10B981' : '#EF4444'}`, borderRadius: '20px', color: eligibleBonusTotal >= 0 ? '#10B981' : '#EF4444', fontSize: '13px', fontWeight: '500' }}>
