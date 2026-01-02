@@ -21,14 +21,16 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { EmployeePortal } from './components/employee-portal/EmployeePortal';
 import CommunicationHubPage from './components/CommunicationHubPage';
 import P4PGrowthPage from './components/P4PGrowthPage';
+
+
 // import { PortalPreview } from './components/PortalPreview'; // Uncomment if you have PortalPreview
 import './styles/globals.css';
 
 // Define all possible views
-type ViewType = 
-  | 'dashboard' 
+type ViewType =
+  | 'dashboard'
   | 'messages'
-  | 'clients' 
+  | 'clients'
   | 'calendar'
   | 'communications'
   | 'quotes'
@@ -37,7 +39,7 @@ type ViewType =
   | 'jobs'
   | 'job-card'
   | 'photos'
-  | 'time-sheet' 
+  | 'time-sheet'
   | 'items'
   | 'vendors'
   | 'reviews'
@@ -59,7 +61,14 @@ interface User {
 function AppContent() {
   const { theme, toggleTheme, colors } = useTheme();
   const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [user, setUser] = useState<User | null>({ id: 1, firstName: 'Dev', lastName: 'User', email: 'dev@test.com', role: 'Admin', portalType: 'admin' });
+  const [user, setUser] = useState<User | null>({
+    id: 1,
+    firstName: 'Dev',
+    lastName: 'User',
+    email: 'dev@test.com',
+    role: 'Admin',
+    portalType: 'admin',
+  });
   const [loginError, setLoginError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentPortal, setCurrentPortal] = useState<PortalType>('admin');
@@ -67,20 +76,29 @@ function AppContent() {
   const [loginPage, setLoginPage] = useState<LoginPageType>(null);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [showJobDrawer, setShowJobDrawer] = useState(false);
-  
+
   // Check if we're on preview route
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+
+  // Simple toast notifications (used for "Saved" confirmations)
+  const [toast, setToast] = useState<{ message: string; kind?: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, kind: 'success' | 'error' = 'success') => {
+    setToast({ message, kind });
+    // auto-hide after 3 seconds
+    window.setTimeout(() => setToast(null), 3000);
+  };
 
   // Detect which login page to show based on URL
   useEffect(() => {
     const path = window.location.pathname;
-    
+
     // Check for preview mode first
     if (path === '/preview' || path === '/preview/') {
       setIsPreviewMode(true);
       return;
     }
-    
+
     if (path === '/admin/login' || path === '/admin/login/') {
       setLoginPage('admin-login');
     } else if (path === '/employee/login' || path === '/employee/login/') {
@@ -101,6 +119,69 @@ function AppContent() {
     //   setIsLoggedIn(true);
     //   setCurrentPortal(parsedUser.portalType || 'admin');
     // }
+  }, []);
+
+  // Listen for cross-component navigation requests (e.g., after "Save & Schedule Visit")
+  useEffect(() => {
+    const onNavigate = (e: Event) => {
+      const evt = e as CustomEvent<{ screen?: ViewType | string }>;
+      if (!evt.detail?.screen) return;
+
+      // We keep this intentionally strict so random values can't break the UI.
+      const screen = evt.detail.screen;
+      const allowed: ViewType[] = [
+        'dashboard',
+        'messages',
+        'clients',
+        'calendar',
+        'communications',
+        'quotes',
+        'contracts',
+        'work-orders',
+        'jobs',
+        'items',
+        'vendors',
+        'photos',
+        'time-sheet',
+        'settings',
+      ];
+
+      if (allowed.includes(screen as ViewType)) {
+        setCurrentView(screen as ViewType);
+      }
+    };
+
+    window.addEventListener('boardroom:navigate', onNavigate);
+    return () => window.removeEventListener('boardroom:navigate', onNavigate);
+  }, []);
+
+  // Store a pending "schedule visit" draft so the Calendar can open a prefilled appointment modal on date click.
+  useEffect(() => {
+    const onScheduleVisit = (e: Event) => {
+      const evt = e as CustomEvent<{ client?: any }>;
+      if (!evt.detail?.client) return;
+
+      try {
+        sessionStorage.setItem(
+          'boardroom_pending_visit',
+          JSON.stringify({
+            client: evt.detail.client,
+            createdAt: Date.now(),
+          })
+        );
+      } catch {
+        // ignore storage errors
+      }
+
+      // Give immediate feedback
+      showToast('Client saved — click a date on the calendar to schedule the visit.', 'success');
+
+      // Move to calendar view
+      setCurrentView('calendar');
+    };
+
+    window.addEventListener('boardroom:schedule-visit', onScheduleVisit);
+    return () => window.removeEventListener('boardroom:schedule-visit', onScheduleVisit);
   }, []);
 
   // If in preview mode, show the Portal Preview (uncomment if you have PortalPreview)
@@ -127,16 +208,16 @@ function AppContent() {
       if (response.ok && data.token) {
         // Add portal type to user data
         const userData = { ...data.user, portalType };
-        
+
         // Store token and user
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(userData));
-        
+
         setUser(userData);
         setCurrentPortal(portalType);
         setIsLoggedIn(true);
         setLoginError('');
-        
+
         // Update URL without reload
         window.history.pushState({}, '', '/');
       } else {
@@ -157,7 +238,7 @@ function AppContent() {
     setUser(null);
     setIsLoggedIn(false);
     setCurrentView('dashboard');
-    
+
     // Redirect based on portal type
     if (currentPortal === 'employee') {
       window.location.href = '/employee/login';
@@ -179,7 +260,7 @@ function AppContent() {
         return;
       }
     }
-    
+
     // Handle ClientIntake navigation (e.g., "ClientIntake/123")
     if (page.startsWith('ClientIntake/')) {
       // Navigate to Clients page - the intake form can be opened there
@@ -194,51 +275,51 @@ function AppContent() {
     }
 
     const pageMap: Record<string, ViewType> = {
-      'Dashboard': 'dashboard',
-      'Messages': 'messages',
-      'Clients': 'clients',
+      Dashboard: 'dashboard',
+      Messages: 'messages',
+      Clients: 'clients',
       'Clients/Contractors': 'clients',
       'Clients/Locations': 'clients',
       'Clients/Company': 'clients',
-      'Calendar': 'calendar',
-      'Appointments': 'calendar',
-      'Quotes': 'quotes',
+      Calendar: 'calendar',
+      Appointments: 'calendar',
+      Quotes: 'quotes',
       'Quotes/Draft': 'quotes',
       'Quotes/Sent': 'quotes',
       'Quotes/Accepted': 'quotes',
       'Quotes/Rejected': 'quotes',
-      'Contracts': 'contracts',
+      Contracts: 'contracts',
       'Contracts/Sent': 'contracts',
       'Contracts/Signed': 'contracts',
-      'WorkOrders': 'work-orders',
+      WorkOrders: 'work-orders',
       'Work Orders': 'work-orders',
-      'Jobs': 'jobs',
+      Jobs: 'jobs',
       'Jobs/ReadyToStart': 'jobs',
       'Jobs/InProgress': 'jobs',
       'Jobs/Completed': 'jobs',
-      'Photos': 'photos',
+      Photos: 'photos',
       'Time Sheet': 'time-sheet',
       'Time Sheet/WageRate': 'time-sheet',
       'Time Sheet/GeneralTasks': 'time-sheet',
       'Time Sheet/WeeklyReport': 'time-sheet',
       'Time Sheet/Payroll': 'time-sheet',
-      'Timesheet': 'time-sheet',
-      'Items': 'items',
-      'Vendors': 'vendors',
+      Timesheet: 'time-sheet',
+      Items: 'items',
+      Vendors: 'vendors',
       'Vendors/Contacts': 'vendors',
       'Vendors/PriceList': 'vendors',
-      'Reviews': 'reviews',
-      'Settings': 'settings',
+      Reviews: 'reviews',
+      Settings: 'settings',
       'Settings/Employees': 'settings',
       'Settings/Departments': 'settings',
       'Settings/Roles': 'settings',
       'Settings/Taxes': 'settings',
-      'Client': 'clients',
-      'Communications': 'communications',
-      'CommunicationHub': 'communications',
+      Client: 'clients',
+      Communications: 'communications',
+      CommunicationHub: 'communications',
       'Communication Hub': 'communications',
       'P4P Growth': 'p4p-growth',
-      'P4PGrowth': 'p4p-growth',
+      P4PGrowth: 'p4p-growth',
     };
 
     // Handle mode switching
@@ -327,20 +408,20 @@ function AppContent() {
   // Customer Portal Content
   const renderCustomerContent = () => {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        backgroundColor: '#F5F7FA',
-        padding: '20px',
-        textAlign: 'center'
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          backgroundColor: '#F5F7FA',
+          padding: '20px',
+          textAlign: 'center',
+        }}
+      >
         <h1 style={{ color: '#333', marginBottom: '16px' }}>Welcome, {user?.firstName}!</h1>
-        <p style={{ color: '#666', fontSize: '16px', marginBottom: '24px' }}>
-          Your Customer Portal is being set up.
-        </p>
+        <p style={{ color: '#666', fontSize: '16px', marginBottom: '24px' }}>Your Customer Portal is being set up.</p>
         <button
           onClick={handleLogout}
           style={{
@@ -350,7 +431,7 @@ function AppContent() {
             border: 'none',
             borderRadius: '8px',
             fontSize: '14px',
-            cursor: 'pointer'
+            cursor: 'pointer',
           }}
         >
           Log Out
@@ -362,41 +443,22 @@ function AppContent() {
   // If not logged in, show appropriate login page
   if (!isLoggedIn) {
     if (loginPage === 'employee-login') {
-      return (
-        <EmployeeLoginPage 
-          onLogin={(email, password) => handleLogin(email, password, 'employee')} 
-          error={loginError}
-          isLoading={isLoading}
-        />
-      );
+      return <EmployeeLoginPage onLogin={(email, password) => handleLogin(email, password, 'employee')} error={loginError} isLoading={isLoading} />;
     }
-    
+
     if (loginPage === 'customer-login') {
-      return (
-        <CustomerLoginPage 
-          onLogin={(email, password) => handleLogin(email, password, 'customer')} 
-          error={loginError}
-          isLoading={isLoading}
-        />
-      );
+      return <CustomerLoginPage onLogin={(email, password) => handleLogin(email, password, 'customer')} error={loginError} isLoading={isLoading} />;
     }
-    
+
     // Default to admin login
-    return (
-      <AdminLoginPage 
-        onLogin={(email, password) => handleLogin(email, password, 'admin')} 
-        error={loginError}
-        isLoading={isLoading}
-      />
-    );
+    return <AdminLoginPage onLogin={(email, password) => handleLogin(email, password, 'admin')} error={loginError} isLoading={isLoading} />;
   }
 
   // Check if admin is previewing employee portal
   const isAdminPreviewingEmployee = currentPortal === 'employee' && user?.role === 'Admin';
-  
+
   // Check if employee is viewing a main page (Calendar, Photos, etc.)
-  const employeeViewingMainPage = currentPortal === 'employee' && 
-    ['calendar', 'photos', 'messages', 'time-sheet'].includes(currentView);
+  const employeeViewingMainPage = currentPortal === 'employee' && ['calendar', 'photos', 'messages', 'time-sheet'].includes(currentView);
 
   // Render employee main page with back button
   const renderEmployeeMainPage = () => {
@@ -417,6 +479,30 @@ function AppContent() {
 
     return (
       <div>
+        {toast && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 16,
+              right: 16,
+              zIndex: 10000,
+              padding: '12px 14px',
+              borderRadius: 12,
+              border: '1px solid #2A2A2A',
+              background: toast.kind === 'error' ? '#2b0b0b' : '#0b2b12',
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
+              maxWidth: 360,
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            {toast.message}
+          </div>
+        )}
+
         {/* Back to Employee Portal button */}
         <button
           onClick={() => setCurrentView('dashboard')}
@@ -432,7 +518,7 @@ function AppContent() {
             borderRadius: '8px',
             fontWeight: 600,
             cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
           }}
         >
           ← Back to Portal
@@ -473,7 +559,7 @@ function AppContent() {
                   borderRadius: '8px',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                 }}
               >
                 ← Back to Admin
@@ -485,7 +571,7 @@ function AppContent() {
       ) : (
         renderAdminContent()
       )}
-      
+
       {/* Job Card Drawer - shown when clicking calendar appointments */}
       <JobCardDrawer
         isOpen={showJobDrawer}

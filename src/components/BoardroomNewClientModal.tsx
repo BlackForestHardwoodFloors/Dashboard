@@ -11,7 +11,6 @@ import {
   MapPin,
   Plus,
   Calendar,
-  FileText,
   ChevronDown
 } from 'lucide-react';
 
@@ -65,19 +64,43 @@ interface BoardroomNewClientModalProps {
   onScheduleVisit?: (clientData: { firstName: string; lastName: string; displayName: string; address: string; region: string }) => void;
 }
 
+
+// --- Input helpers (phone formatting + email quick-complete) ---
+const digitsOnly = (v: string) => (v || '').replace(/\D/g, '');
+
+const formatPhone = (v: string) => {
+  const d = digitsOnly(v).slice(0, 10);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+};
+
+const normalizeEmailDomain = (email: string) => {
+  const e = (email || '').trim();
+  const at = e.indexOf('@');
+  if (at === -1) return e;
+  const local = e.slice(0, at);
+  let domain = e.slice(at + 1);
+  if (!domain) return e;
+  const common = ['gmail', 'yahoo', 'outlook', 'hotmail', 'icloud', 'aol', 'protonmail', 'live', 'msn'];
+  if (common.includes(domain.toLowerCase())) domain = `${domain}.com`;
+  return `${local}@${domain}`;
+};
+
 export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreated, onScheduleVisit }: BoardroomNewClientModalProps) {
   // Section 1: Client Type & Account Info
-  const [clientType, setClientType] = useState<'Homeowner' | 'Contractor' | 'Designer' | 'Property Manager' | 'Other'>('Homeowner');
+  const [clientType, setClientType] = useState<'Homeowner' | 'Contractor' | 'Realtor' | 'Designer' | 'Property Manager' | 'Other'>('Homeowner');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [secondHomeowner, setSecondHomeowner] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [otherClientTypeLabel, setOtherClientTypeLabel] = useState('');
   
   // Success message state
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [displayNameManuallyEdited, setDisplayNameManuallyEdited] = useState(false);
-  const [status, setStatus] = useState('Lead');
-  const [leadSource, setLeadSource] = useState('Referral');
+const [leadSource, setLeadSource] = useState('');
   const [tags, setTags] = useState<string[]>([]);
 
   // Auto-generate display name based on client type
@@ -85,24 +108,22 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
     const f = first.trim();
     const l = last.trim();
     const s = second?.trim();
-    
+
     if (!f && !l) return '';
-    
-    // For Contractors - use business name style (First Last or just the name)
-    if (type === 'Contractor') {
-      if (f && l) return `${f} ${l}`;
-      return f || l;
-    }
-    
-    // For Homeowners, Designers, Property Managers - Last, First format
-    if (l && f) {
-      if (s) {
-        return `${l}, ${f} & ${s}`;
+
+    // Homeowners: Last, First (& Second)
+    if (type === 'Homeowner') {
+      if (l && f) {
+        if (s) return `${l}, ${f} & ${s}`;
+        return `${l}, ${f}`;
       }
-      return `${l}, ${f}`;
+      return l || f;
     }
-    
-    return l || f;
+
+    // Everyone else (Contractor/Realtor/Designer/Property Manager/Other):
+    // Use First Last (contact style)
+    if (f && l) return `${f} ${l}`;
+    return f || l;
   };
 
   // Update display name when first/last name changes (unless manually edited)
@@ -127,8 +148,14 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
     }
   };
 
-  const handleClientTypeChange = (type: 'Homeowner' | 'Contractor' | 'Designer' | 'Property Manager' | 'Other') => {
+  const handleClientTypeChange = (type: 'Homeowner' | 'Contractor' | 'Realtor' | 'Designer' | 'Property Manager' | 'Other') => {
     setClientType(type);
+    if (type === 'Homeowner') {
+      setCompanyName('');
+    }
+    if (type !== 'Other') {
+      setOtherClientTypeLabel('');
+    }
     if (!displayNameManuallyEdited) {
       setDisplayName(generateDisplayName(firstName, lastName, type, secondHomeowner));
     }
@@ -142,6 +169,16 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
   // Section 2: Primary Contact
   const [contactFirstName, setContactFirstName] = useState('');
   const [contactLastName, setContactLastName] = useState('');
+
+  // Auto-fill Primary Contact name from the "Client Name" at the top.
+  // Only fills when the Primary Contact fields are empty, so the user can change them freely.
+  useEffect(() => {
+    if (!contactFirstName && firstName) setContactFirstName(firstName);
+  }, [firstName, contactFirstName]);
+
+  useEffect(() => {
+    if (!contactLastName && lastName) setContactLastName(lastName);
+  }, [lastName, contactLastName]);
   const [phoneNumbers, setPhoneNumbers] = useState<Array<{ number: string; type: string; name?: string }>>([{ number: '', type: 'Mobile', name: '' }]);
   const [emailAddresses, setEmailAddresses] = useState<Array<{ email: string; name?: string }>>([{ email: '', name: '' }]);
   const [role, setRole] = useState('Owner');
@@ -152,7 +189,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
   const [receiveEmail, setReceiveEmail] = useState(true);
 
   // Section 3: Project / Work Information
-  const [typeOfWork, setTypeOfWork] = useState('');
+  const [typeOfWork, setTypeOfWork] = useState<string[]>([]);
   const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
   const [projectNotes, setProjectNotes] = useState('');
 
@@ -164,6 +201,10 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
   const [zip, setZip] = useState('');
   const [region, setRegion] = useState('');
   const [billingAddressSame, setBillingAddressSame] = useState(true);
+  const [billingStreetAddress, setBillingStreetAddress] = useState('');
+  const [billingCity, setBillingCity] = useState('');
+  const [billingState, setBillingState] = useState('');
+  const [billingZip, setBillingZip] = useState('');
   const [propertyNotes, setPropertyNotes] = useState('');
 
   // Google Maps Autocomplete refs
@@ -339,9 +380,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
   const [customRooms, setCustomRooms] = useState<string[]>([]);
 
   // Available tag options (will grow as custom tags are added)
-  const [availableTags, setAvailableTags] = useState<string[]>([
-    'VIP',
-    'High Priority',
+  const [availableTags, setAvailableTags] = useState<string[]>([    'High Priority',
     'Repeat Customer',
     'Large Project',
     'Quick Turnaround',
@@ -349,7 +388,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
     'Commercial',
     'Residential',
     'Designer Client',
-    'YELLOW CHECKLIST'
+    'Yellow Checklist'
   ]);
   const [newTagInput, setNewTagInput] = useState('');
 
@@ -400,8 +439,20 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
     
     // Required fields - Section 1
     if (!firstName.trim()) errors.push({ message: 'First Name is required', field: 'firstName', ref: firstNameRef as React.RefObject<HTMLElement> });
-    if (!lastName.trim()) errors.push({ message: 'Last Name is required', field: 'lastName', ref: lastNameRef as React.RefObject<HTMLElement> });
+    if (clientType === 'Homeowner' && !lastName.trim()) errors.push({ message: 'Last Name is required', field: 'lastName', ref: lastNameRef as React.RefObject<HTMLElement> });
     if (!displayName.trim()) errors.push({ message: 'Display Name is required', field: 'displayName', ref: section1Ref as React.RefObject<HTMLElement> });
+
+
+    // Business types require Company Name (Section 1)
+    const businessTypes: string[] = ['Contractor', 'Realtor', 'Designer', 'Property Manager', 'Other'];
+    if (businessTypes.includes(clientType) && !companyName.trim()) {
+      errors.push({ message: 'Company Name is required', field: 'companyName', ref: section1Ref as React.RefObject<HTMLElement> });
+    }
+
+    // If "Other" selected, require the "Other Type" label (Section 1)
+    if (clientType === 'Other' && !otherClientTypeLabel.trim()) {
+      errors.push({ message: 'Please specify the Other type', field: 'otherClientTypeLabel', ref: section1Ref as React.RefObject<HTMLElement> });
+    }
     
     // Contact info - at least one phone or email (Section 2)
     const hasPhone = phoneNumbers.some(p => p.number.trim() !== '');
@@ -464,7 +515,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
   };
 
   // Handle save with validation
-  const handleSave = (action: 'save' | 'quote' | 'visit') => {
+  const handleSave = (action: 'save' | 'visit') => {
     const errors = validateForm();
     
     if (errors.length > 0) {
@@ -483,10 +534,13 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
     setValidationErrors([]);
     
     // TODO: Implement actual API save logic here
-    console.log('Saving client...', { action, firstName, lastName, displayName, preferredContactMethods });
+    console.log('Saving client...', { action, clientType, companyName, otherClientTypeLabel, firstName, lastName, displayName, preferredContactMethods });
     
     // Build full address
     const fullAddress = `${streetAddress}, ${city}, ${state} ${zip}`;
+      const billingFullAddress = billingAddressSame
+        ? fullAddress
+        : `${billingStreetAddress}, ${billingCity}, ${billingState} ${billingZip}`;
     
     // Get primary phone and email for the client record
     const primaryPhone = phoneNumbers.find(p => p.number.trim())?.number || '';
@@ -507,23 +561,46 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
           phone: primaryPhone,
           email: primaryEmail,
           address: fullAddress,
+          billingAddressSame,
+          billingAddress: billingFullAddress,
           region,
-          preferredContactMethods
+          preferredContactMethods,
+          clientType,
+          companyName,
+          otherClientTypeLabel
         });
       }
-    } else if (action === 'quote') {
-      // Show success message for quote
-      setSaveSuccess('Client saved! Opening quote creator...');
-      setTimeout(() => {
-        setSaveSuccess(null);
-        // TODO: Navigate to quote creator
-      }, 2000);
     } else if (action === 'visit') {
       // Close modal and open calendar with client data
       setSaveSuccess('Client saved! Opening scheduler...');
       setTimeout(() => {
         setSaveSuccess(null);
+
+        // Notify the app we want to schedule a visit for this client (Calendar will handle date click + prefilled modal)
+        window.dispatchEvent(new CustomEvent('boardroom:schedule-visit', {
+          detail: {
+            client: {
+              firstName,
+              lastName,
+              displayName,
+              address: fullAddress,
+              region,
+              phone: primaryPhone,
+              email: primaryEmail,
+              clientType,
+              companyName,
+              otherClientTypeLabel
+            }
+          }
+        }));
+
+        // Switch view to calendar (App.tsx should listen for this event)
+        window.dispatchEvent(new CustomEvent('boardroom:navigate', { detail: { screen: 'calendar' } }));
+
+        // Close modal after signaling
         onClose();
+
+        // Back-compat: call onScheduleVisit prop if provided
         if (onScheduleVisit) {
           onScheduleVisit({
             firstName,
@@ -535,7 +612,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
         }
       }, 1000);
     }
-    
+
     return true;
   };
 
@@ -592,7 +669,24 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
           display: none !important;
         }
       `}</style>
-    <div 
+    <style>{`
+      @media (max-width: 640px) {
+        .br-nc-overlay { padding: 10px !important; align-items: flex-start !important; }
+        .br-nc-modal { max-width: 100% !important; width: 100% !important; border-radius: 12px !important; max-height: 100vh !important; }
+        .br-nc-modal input, .br-nc-modal select, .br-nc-modal textarea { font-size: 16px !important; }
+      }
+    `}</style>
+    <datalist id="brCommonEmailDomains">
+      <option value="@gmail.com" />
+      <option value="@yahoo.com" />
+      <option value="@outlook.com" />
+      <option value="@hotmail.com" />
+      <option value="@icloud.com" />
+      <option value="@aol.com" />
+      <option value="@protonmail.com" />
+    </datalist>
+
+    <div className="br-nc-overlay"
       style={{
         position: 'fixed',
         top: 0,
@@ -609,7 +703,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
       }}
       onClick={onClose}
     >
-      <div 
+      <div className="br-nc-modal"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
@@ -725,6 +819,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
                 {[
                   { value: 'Homeowner', icon: Home },
                   { value: 'Contractor', icon: Briefcase },
+                  { value: 'Realtor', icon: Home },
                   { value: 'Designer', icon: Palette },
                   { value: 'Property Manager', label: 'Property Mgr', icon: Building2 },
                   { value: 'Other', icon: User }
@@ -734,48 +829,186 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
                   const label = 'label' in option ? option.label : option.value;
                   
                   return (
-                    <button
-                      key={option.value}
-                      onClick={() => handleClientTypeChange(option.value as any)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 20px',
-                        backgroundColor: isActive ? '#5EB77D' : 'transparent',
-                        color: isActive ? '#FFFFFF' : '#A5A5A5',
-                        border: `2px solid ${isActive ? '#5EB77D' : '#3A3A3B'}`,
-                        borderRadius: '999px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease-in-out'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isActive) {
-                          e.currentTarget.style.borderColor = '#5EB77D';
-                          e.currentTarget.style.color = '#FFFFFF';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive) {
-                          e.currentTarget.style.borderColor = '#3A3A3B';
-                          e.currentTarget.style.color = '#A5A5A5';
-                        }
-                      }}
-                    >
-                      <Icon size={16} />
-                      {label}
-                    </button>
+                    option.value === 'Other' ? (
+                      <div
+                        key={option.value}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+                      >
+                        <button
+                          onClick={() => handleClientTypeChange(option.value as any)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '10px 20px',
+                            backgroundColor: isActive ? '#5EB77D' : 'transparent',
+                            color: isActive ? '#FFFFFF' : '#A5A5A5',
+                            border: `2px solid ${isActive ? '#5EB77D' : '#3A3A3B'}`,
+                            borderRadius: '999px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease-in-out'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isActive) {
+                              e.currentTarget.style.borderColor = '#5EB77D';
+                              e.currentTarget.style.color = '#FFFFFF';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isActive) {
+                              e.currentTarget.style.borderColor = '#3A3A3B';
+                              e.currentTarget.style.color = '#A5A5A5';
+                            }
+                          }}
+                        >
+                          <Icon size={16} />
+                          {label}
+                        </button>
+
+                        {isActive && (
+                          <input
+                            type="text"
+                            placeholder="Specify other…"
+                            value={otherClientTypeLabel}
+                            onChange={(e) => setOtherClientTypeLabel(e.target.value)}
+                            style={{
+                              width: '260px',
+                              padding: '10px 12px',
+                              backgroundColor: '#1B1C1D',
+                              border: '1px solid #3A3A3B',
+                              borderRadius: '10px',
+                              color: '#FFFFFF',
+                              fontSize: '14px',
+                              outline: 'none'
+                            }}
+                            onFocus={(e) => { e.currentTarget.style.borderColor = '#5EB77D'; }}
+                            onBlur={(e) => { e.currentTarget.style.borderColor = '#3A3A3B'; }}
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        key={option.value}
+                        onClick={() => handleClientTypeChange(option.value as any)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '10px 20px',
+                          backgroundColor: isActive ? '#5EB77D' : 'transparent',
+                          color: isActive ? '#FFFFFF' : '#A5A5A5',
+                          border: `2px solid ${isActive ? '#5EB77D' : '#3A3A3B'}`,
+                          borderRadius: '999px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease-in-out'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.borderColor = '#5EB77D';
+                            e.currentTarget.style.color = '#FFFFFF';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.borderColor = '#3A3A3B';
+                            e.currentTarget.style.color = '#A5A5A5';
+                          }
+                        }}
+                      >
+                        <Icon size={16} />
+                        {label}
+                      </button>
+                    )
                   );
                 })}
               </div>
             </div>
 
-            {/* Name Fields - 2 Column */}
+            
+            {/* Company Name (for business-type clients) */}
+            {(['Contractor', 'Realtor', 'Designer', 'Property Manager', 'Other'] as ClientType[]).includes(clientType) && (
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  color: '#A5A5A5',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  marginBottom: '8px'
+                }}>
+                  Company Name <span style={{ color: '#C9A049' }}>*</span>
+                  {!displayNameManuallyEdited && (
+                    <span style={{ color: '#666', fontSize: '11px', marginLeft: '8px' }}>(auto-generated)</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  placeholder="Company Name"
+                  value={displayName}
+                  onChange={(e) => handleDisplayNameChange(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    backgroundColor: '#2C2D2E',
+                    border: '1px solid #3A3A3B',
+                    borderRadius: '10px',
+                    color: '#FFFFFF',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'border-color 0.15s ease-in-out'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#5EB77D';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#3A3A3B';
+                  }}
+                />
+
+                              </div>
+            )}
+
+
+            {/* Company Name (Business Types) */}
+            {['Contractor', 'Realtor', 'Designer', 'Property Manager', 'Other'].includes(clientType) && (
+              <div style={{ marginTop: '14px', marginBottom: '18px' }}>
+                <label style={{
+                  display: 'block',
+                  color: '#A5A5A5',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  marginBottom: '8px'
+                }}>
+                  Company Name <span style={{ color: '#C9A049' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Company name"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    backgroundColor: '#1B1C1D',
+                    border: '1px solid #3A3A3B',
+                    borderRadius: '10px',
+                    color: '#FFFFFF',
+                    fontSize: '14px',
+                    outline: 'none'
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = '#5EB77D'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#3A3A3B'; }}
+                />
+              </div>
+            )}
+
+{/* Name Fields - 2 Column */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
+              gridTemplateColumns: '1fr',
               gap: '16px',
               marginBottom: '16px'
             }}>
@@ -889,6 +1122,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
             </div>
 
             {/* Display Name */}
+            {(!(['Contractor', 'Realtor', 'Designer', 'Property Manager', 'Other'] as ClientType[]).includes(clientType)) && (
             <div style={{ marginBottom: '16px' }}>
               <label style={{
                 display: 'block',
@@ -897,14 +1131,14 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
                 fontWeight: '500',
                 marginBottom: '8px'
               }}>
-                Display Name <span style={{ color: '#C9A049' }}>*</span>
+                {clientType === 'Homeowner' ? 'Display Name' : 'Company Name'} <span style={{ color: '#C9A049' }}>*</span>
                 {!displayNameManuallyEdited && (
                   <span style={{ color: '#666', fontSize: '11px', marginLeft: '8px' }}>(auto-generated)</span>
                 )}
               </label>
               <input
                 type="text"
-                placeholder={clientType === 'Contractor' ? 'Business Name' : 'Last, First'}
+                placeholder={clientType === 'Homeowner' ? 'Last, First' : 'Company Name'}
                 value={displayName}
                 onChange={(e) => handleDisplayNameChange(e.target.value)}
                 style={{
@@ -926,11 +1160,12 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
                 }}
               />
             </div>
+            )}
 
-            {/* Status & Lead Source - 2 Column */}
+            {/* Lead Source (optional) */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
+              gridTemplateColumns: '1fr',
               gap: '16px',
               marginBottom: '16px'
             }}>
@@ -942,59 +1177,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
                   fontWeight: '500',
                   marginBottom: '8px'
                 }}>
-                  Status <span style={{ color: '#C9A049' }}>*</span>
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '11px 36px 11px 14px',
-                      backgroundColor: '#2C2D2E',
-                      border: '1px solid #3A3A3B',
-                      borderRadius: '10px',
-                      color: '#FFFFFF',
-                      fontSize: '14px',
-                      outline: 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease-in-out',
-                      appearance: 'none'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#5EB77D';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = '#3A3A3B';
-                    }}
-                  >
-                    <option value="Lead">Lead</option>
-                    <option value="Active">Active</option>
-                    <option value="Past">Past</option>
-                  </select>
-                  <ChevronDown 
-                    size={16} 
-                    style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      pointerEvents: 'none',
-                      color: '#7A7A7A'
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{
-                  display: 'block',
-                  color: '#A5A5A5',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  marginBottom: '8px'
-                }}>
-                  Lead Source <span style={{ color: '#C9A049' }}>*</span>
+                  Lead Source <span style={{ color: '#A5A5A5' }}>(optional)</span>
                 </label>
                 <div style={{ position: 'relative' }}>
                   <select
@@ -1020,6 +1203,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
                       e.target.style.borderColor = '#3A3A3B';
                     }}
                   >
+                    <option value="">(optional)</option>
                     <option value="Google">Google</option>
                     <option value="Referral">Referral</option>
                     <option value="LSA">LSA</option>
@@ -1156,7 +1340,8 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
             </div>
           </div>
 
-          {/* SECTION 2: Primary Contact */}
+
+{/* SECTION 2: Primary Contact */}
           <div ref={section2Ref} style={{
             backgroundColor: '#232425',
             borderRadius: '14px',
@@ -1175,7 +1360,7 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
             {/* Name Fields - 2 Column */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
+              gridTemplateColumns: '1fr',
               gap: '16px',
               marginBottom: '16px'
             }}>
@@ -1320,11 +1505,18 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
                     <input
                       ref={index === 0 ? phoneRef : undefined}
                       type="text"
+                      inputMode="numeric"
+                      autoComplete="tel"
                       placeholder="e.g., 123-456-7890"
-                      value={phone.number}
+                      value={formatPhone(phone.number)}
                       onChange={(e) => {
                         const newPhoneNumbers = [...phoneNumbers];
-                        newPhoneNumbers[index].number = e.target.value;
+                        newPhoneNumbers[index].number = formatPhone(e.target.value);
+                        setPhoneNumbers(newPhoneNumbers);
+                      }}
+                      onBlur={(e) => {
+                        const newPhoneNumbers = [...phoneNumbers];
+                        newPhoneNumbers[index].number = formatPhone(e.target.value);
                         setPhoneNumbers(newPhoneNumbers);
                       }}
                       style={{
@@ -1491,11 +1683,18 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
                     <input
                       ref={index === 0 ? emailRef : undefined}
                       type="email"
+                      autoComplete="email"
+                      list="brCommonEmailDomains"
                       placeholder="e.g., example@example.com"
                       value={email.email}
                       onChange={(e) => {
                         const newEmailAddresses = [...emailAddresses];
                         newEmailAddresses[index].email = e.target.value;
+                        setEmailAddresses(newEmailAddresses);
+                      }}
+                      onBlur={(e) => {
+                        const newEmailAddresses = [...emailAddresses];
+                        newEmailAddresses[index].email = normalizeEmailDomain(e.target.value);
                         setEmailAddresses(newEmailAddresses);
                       }}
                       style={{
@@ -1922,13 +2121,19 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
                   'Sand and Finish',
                   'Buff and Recoat'
                 ].map((workType) => {
-                  const isSelected = typeOfWork === workType;
+                  const isSelected = typeOfWork.includes(workType);
                   
                   return (
                     <button
                       key={workType}
                       type="button"
-                      onClick={() => setTypeOfWork(workType)}
+                      onClick={() => {
+                        setTypeOfWork((prev) =>
+                          prev.includes(workType)
+                            ? prev.filter((t) => t !== workType)
+                            : [...prev, workType]
+                        );
+                      }}
                       style={{
                         padding: '10px 18px',
                         backgroundColor: isSelected ? '#5EB77D' : 'transparent',
@@ -2287,194 +2492,191 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
               )}
             </div>
 
-            {/* City / State / ZIP / Region - 4 Column Grid */}
+                        {/* City / State / ZIP - Region below City */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr 1fr',
+              gridTemplateColumns: '1.35fr 0.8fr 0.85fr',
               gap: '16px',
               marginBottom: '16px'
             }}>
               {/* City */}
-              <div>
-                <label style={{
-                  display: 'block',
-                  color: '#A5A5A5',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  marginBottom: '8px'
-                }}>
-                  City <span style={{ color: '#C9A049' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Springfield"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '11px 14px',
-                    backgroundColor: '#2C2D2E',
-                    border: '1px solid #3A3A3B',
-                    borderRadius: '10px',
-                    color: '#FFFFFF',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.15s ease-in-out'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#5EB77D';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#3A3A3B';
-                  }}
-                />
-              </div>
+                            <div>
+                              <label style={{
+                                display: 'block',
+                                color: '#A5A5A5',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                marginBottom: '8px'
+                              }}>
+                                City <span style={{ color: '#C9A049' }}>*</span>
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Springfield"
+                                value={city}
+                                onChange={(e) => setCity(e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '11px 14px',
+                                  backgroundColor: '#2C2D2E',
+                                  border: '1px solid #3A3A3B',
+                                  borderRadius: '10px',
+                                  color: '#FFFFFF',
+                                  fontSize: '14px',
+                                  outline: 'none',
+                                  transition: 'all 0.15s ease-in-out'
+                                }}
+                                onFocus={(e) => {
+                                  e.target.style.borderColor = '#5EB77D';
+                                }}
+                                onBlur={(e) => {
+                                  e.target.style.borderColor = '#3A3A3B';
+                                }}
+                              />
 
+                {/* Region */}
+                              <div>
+                                <label style={{
+                                  display: 'block',
+                                  color: '#A5A5A5',
+                                  fontSize: '13px',
+                                  fontWeight: '500',
+                                  marginBottom: '8px'
+                                }}>
+                                  Region <span style={{ fontSize: '10px', color: '#666' }}>(auto-filled by ZIP)</span>
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                  <select
+                                    value={region}
+                                    onChange={(e) => setRegion(e.target.value)}
+                                    style={{
+                                      width: '100%',
+                                      padding: '11px 36px 11px 14px',
+                                      backgroundColor: region ? '#3D4435' : '#2C2D2E',
+                                      border: region ? '1px solid #5EB77D' : '1px solid #3A3A3B',
+                                      borderRadius: '10px',
+                                      color: region ? '#FFFFFF' : '#7A7A7A',
+                                      fontSize: '14px',
+                                      outline: 'none',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.15s ease-in-out',
+                                      appearance: 'none'
+                                    }}
+                                    onFocus={(e) => {
+                                      e.target.style.borderColor = '#5EB77D';
+                                    }}
+                                    onBlur={(e) => {
+                                      e.target.style.borderColor = region ? '#5EB77D' : '#3A3A3B';
+                                    }}
+                                  >
+                                    <option value="">Select region</option>
+                                    <option value="Spokane">Spokane</option>
+                                    <option value="Valley">Valley</option>
+                                    <option value="Liberty Lake">Liberty Lake</option>
+                                    <option value="Cheney">Cheney</option>
+                                    <option value="Airway Heights">Airway Heights</option>
+                                    <option value="Medical Lake">Medical Lake</option>
+                                    <option value="Deer Park">Deer Park</option>
+                                    <option value="Mead">Mead</option>
+                                    <option value="Nine Mile Falls">Nine Mile Falls</option>
+                                    <option value="Post Falls">Post Falls</option>
+                                    <option value="CDA">CDA</option>
+                                    <option value="Hayden">Hayden</option>
+                                    <option value="Rathdrum">Rathdrum</option>
+                                  </select>
+                                  <ChevronDown 
+                                    size={16} 
+                                    style={{
+                                      position: 'absolute',
+                                      right: '12px',
+                                      top: '50%',
+                                      transform: 'translateY(-50%)',
+                                      pointerEvents: 'none',
+                                      color: '#7A7A7A'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
               {/* State */}
-              <div>
-                <label style={{
-                  display: 'block',
-                  color: '#A5A5A5',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  marginBottom: '8px'
-                }}>
-                  State <span style={{ color: '#C9A049' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="IL"
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '11px 14px',
-                    backgroundColor: '#2C2D2E',
-                    border: '1px solid #3A3A3B',
-                    borderRadius: '10px',
-                    color: '#FFFFFF',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.15s ease-in-out'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#5EB77D';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#3A3A3B';
-                  }}
-                />
-              </div>
-
+                            <div>
+                              <label style={{
+                                display: 'block',
+                                color: '#A5A5A5',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                marginBottom: '8px'
+                              }}>
+                                State <span style={{ color: '#C9A049' }}>*</span>
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="IL"
+                                value={state}
+                                onChange={(e) => setState(e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '11px 14px',
+                                  backgroundColor: '#2C2D2E',
+                                  border: '1px solid #3A3A3B',
+                                  borderRadius: '10px',
+                                  color: '#FFFFFF',
+                                  fontSize: '14px',
+                                  outline: 'none',
+                                  transition: 'all 0.15s ease-in-out'
+                                }}
+                                onFocus={(e) => {
+                                  e.target.style.borderColor = '#5EB77D';
+                                }}
+                                onBlur={(e) => {
+                                  e.target.style.borderColor = '#3A3A3B';
+                                }}
+                              />
+                            </div>
               {/* ZIP */}
-              <div>
-                <label style={{
-                  display: 'block',
-                  color: '#A5A5A5',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  marginBottom: '8px'
-                }}>
-                  ZIP <span style={{ color: '#C9A049' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="99201"
-                  value={zip}
-                  onChange={(e) => {
-                    const newZip = e.target.value;
-                    setZip(newZip);
-                    // Auto-fill region based on ZIP
-                    if (newZip.length === 5 && ZIP_TO_REGION[newZip]) {
-                      setRegion(ZIP_TO_REGION[newZip]);
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '11px 14px',
-                    backgroundColor: '#2C2D2E',
-                    border: '1px solid #3A3A3B',
-                    borderRadius: '10px',
-                    color: '#FFFFFF',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.15s ease-in-out'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#5EB77D';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#3A3A3B';
-                  }}
-                />
-              </div>
-
-              {/* Region */}
-              <div>
-                <label style={{
-                  display: 'block',
-                  color: '#A5A5A5',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  marginBottom: '8px'
-                }}>
-                  Region <span style={{ fontSize: '10px', color: '#666' }}>(auto-filled by ZIP)</span>
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <select
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '11px 36px 11px 14px',
-                      backgroundColor: region ? '#3D4435' : '#2C2D2E',
-                      border: region ? '1px solid #5EB77D' : '1px solid #3A3A3B',
-                      borderRadius: '10px',
-                      color: region ? '#FFFFFF' : '#7A7A7A',
-                      fontSize: '14px',
-                      outline: 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease-in-out',
-                      appearance: 'none'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#5EB77D';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = region ? '#5EB77D' : '#3A3A3B';
-                    }}
-                  >
-                    <option value="">Select region</option>
-                    <option value="Spokane">Spokane</option>
-                    <option value="Valley">Valley</option>
-                    <option value="Liberty Lake">Liberty Lake</option>
-                    <option value="Cheney">Cheney</option>
-                    <option value="Airway Heights">Airway Heights</option>
-                    <option value="Medical Lake">Medical Lake</option>
-                    <option value="Deer Park">Deer Park</option>
-                    <option value="Mead">Mead</option>
-                    <option value="Nine Mile Falls">Nine Mile Falls</option>
-                    <option value="Post Falls">Post Falls</option>
-                    <option value="CDA">CDA</option>
-                    <option value="Hayden">Hayden</option>
-                    <option value="Rathdrum">Rathdrum</option>
-                  </select>
-                  <ChevronDown 
-                    size={16} 
-                    style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      pointerEvents: 'none',
-                      color: '#7A7A7A'
-                    }}
-                  />
-                </div>
-              </div>
+                            <div>
+                              <label style={{
+                                display: 'block',
+                                color: '#A5A5A5',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                marginBottom: '8px'
+                              }}>
+                                ZIP <span style={{ color: '#C9A049' }}>*</span>
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="99201"
+                                value={zip}
+                                onChange={(e) => {
+                                  const newZip = e.target.value;
+                                  setZip(newZip);
+                                  // Auto-fill region based on ZIP
+                                  if (newZip.length === 5 && ZIP_TO_REGION[newZip]) {
+                                    setRegion(ZIP_TO_REGION[newZip]);
+                                  }
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '11px 14px',
+                                  backgroundColor: '#2C2D2E',
+                                  border: '1px solid #3A3A3B',
+                                  borderRadius: '10px',
+                                  color: '#FFFFFF',
+                                  fontSize: '14px',
+                                  outline: 'none',
+                                  transition: 'all 0.15s ease-in-out'
+                                }}
+                                onFocus={(e) => {
+                                  e.target.style.borderColor = '#5EB77D';
+                                }}
+                                onBlur={(e) => {
+                                  e.target.style.borderColor = '#3A3A3B';
+                                }}
+                              />
+                            </div>
             </div>
-
-            {/* Billing Address Same */}
+{/* Billing Address Same */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{
                 display: 'block',
@@ -2525,6 +2727,186 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
                 />
               </div>
             </div>
+
+
+            {/* Billing Address Fields (shown when Billing Address Same = No) */}
+            {!billingAddressSame && (
+              <div style={{
+                backgroundColor: '#232425',
+                border: '1px solid #2F3031',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <div style={{
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#E8E8E8',
+                  marginBottom: '12px'
+                }}>
+                  Billing Address
+                </div>
+
+                {/* Billing Street Address */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{
+                    display: 'block',
+                    color: '#A5A5A5',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    marginBottom: '8px'
+                  }}>
+                    Billing Street Address <span style={{ color: '#C9A049' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="123 Main St"
+                    value={billingStreetAddress}
+                    onChange={(e) => setBillingStreetAddress(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '11px 14px',
+                      backgroundColor: '#2C2D2E',
+                      border: '1px solid #3A3A3B',
+                      borderRadius: '10px',
+                      color: '#FFFFFF',
+                      fontSize: '14px',
+                      outline: 'none',
+                      transition: 'all 0.15s ease-in-out'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#5EB77D';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(94, 183, 125, 0.15)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#3A3A3B';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
+
+                {/* Billing City / State / ZIP - 3 Column */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 0.9fr 1fr',
+                  gap: '16px'
+                }}>
+                  {/* Billing City */}
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      color: '#A5A5A5',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      marginBottom: '8px'
+                    }}>
+                      Billing City <span style={{ color: '#C9A049' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Spokane"
+                      value={billingCity}
+                      onChange={(e) => setBillingCity(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        backgroundColor: '#2C2D2E',
+                        border: '1px solid #3A3A3B',
+                        borderRadius: '10px',
+                        color: '#FFFFFF',
+                        fontSize: '14px',
+                        outline: 'none',
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#5EB77D';
+                        e.target.style.boxShadow = '0 0 0 3px rgba(94, 183, 125, 0.15)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#3A3A3B';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    />
+                  </div>
+
+                  {/* Billing State */}
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      color: '#A5A5A5',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      marginBottom: '8px'
+                    }}>
+                      Billing State <span style={{ color: '#C9A049' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="WA"
+                      value={billingState}
+                      onChange={(e) => setBillingState(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        backgroundColor: '#2C2D2E',
+                        border: '1px solid #3A3A3B',
+                        borderRadius: '10px',
+                        color: '#FFFFFF',
+                        fontSize: '14px',
+                        outline: 'none',
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#5EB77D';
+                        e.target.style.boxShadow = '0 0 0 3px rgba(94, 183, 125, 0.15)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#3A3A3B';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    />
+                  </div>
+
+                  {/* Billing ZIP */}
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      color: '#A5A5A5',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      marginBottom: '8px'
+                    }}>
+                      Billing ZIP <span style={{ color: '#C9A049' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="99201"
+                      value={billingZip}
+                      onChange={(e) => setBillingZip(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        backgroundColor: '#2C2D2E',
+                        border: '1px solid #3A3A3B',
+                        borderRadius: '10px',
+                        color: '#FFFFFF',
+                        fontSize: '14px',
+                        outline: 'none',
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#5EB77D';
+                        e.target.style.boxShadow = '0 0 0 3px rgba(94, 183, 125, 0.15)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#3A3A3B';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Property Notes */}
             <div style={{ marginBottom: '16px' }}>
@@ -2746,34 +3128,6 @@ export default function BoardroomNewClientModal({ isOpen, onClose, onClientCreat
             Save Client
           </button>
           
-          <button
-            onClick={() => handleSave('quote')}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: 'transparent',
-              border: '2px solid #C9A049',
-              borderRadius: '12px',
-              color: '#FFFFFF',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease-in-out',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#C9A04915';
-              e.currentTarget.style.borderColor = '#D9B563';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.borderColor = '#C9A049';
-            }}
-          >
-            <FileText size={16} />
-            Save & Create Quote
-          </button>
           
           <button
             onClick={() => handleSave('visit')}
