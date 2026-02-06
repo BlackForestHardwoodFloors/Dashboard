@@ -1,674 +1,479 @@
-import React, { useState } from 'react';
-import { 
-  User,
+import React, { useMemo, useState } from 'react';
+import {
   Star,
   TrendingUp,
-  Award,
-  Clock,
-  Calendar,
-  FileText,
   ChevronRight,
   Play,
   CheckCircle2,
-  DollarSign,
-  Settings,
-  LogOut,
-  AlertTriangle,
   BookOpen,
   Target,
-  Gift
+  FileText,
+  Quote,
+  ArrowLeft
 } from 'lucide-react';
 import { useTheme } from '../ThemeProvider';
-import type { Employee, Job } from '../EmployeePortal';
-import { TimeEntryScreen } from './TimeEntryScreen';
 
-interface MeScreenProps {
-  employee: Employee;
-  jobs: Job[];
-}
+type SubScreen = 'main' | 'growth' | 'training' | 'manual';
 
-type SubScreen = 'main' | 'reviews' | 'growth' | 'training' | 'time' | 'calendar' | 'msds';
+// Public assets
+const EMPLOYEE_IMAGE_SRC = '/mike-thompson.png';
+const EMPLOYEE_MANUAL_PDF =
+  '/Black_Forest_Hardwood_Floors_Employee_Manual_Modernized_Expanded.pdf';
 
-export function MeScreen({ employee, jobs }: MeScreenProps) {
+export function MeScreen({ onBack }: { onBack?: () => void }) {
   const { colors } = useTheme();
   const [subScreen, setSubScreen] = useState<SubScreen>('main');
 
-  // Calculate stats
-  const avgRating = employee.reviews.length > 0
-    ? (employee.reviews.reduce((sum, r) => sum + r.rating, 0) / employee.reviews.length).toFixed(1)
-    : '0.0';
-  const totalBonuses = employee.bonuses.reduce((sum, b) => sum + b.amount, 0);
-  const completedJobs = jobs.filter(j => j.status === 'Completed').length;
+  const employee = useMemo(
+    () => ({
+      firstName: 'Mike',
+      lastName: 'Thompson',
+      role: 'Lead Installer',
+      skillLevel: 3,
+      avatar: EMPLOYEE_IMAGE_SRC,
+      bio: {
+        yearsExperience: 8,
+        trainingClasses: ['Hardwood 101', 'LVP Certified'],
+        certifications: ['Lead Installer', 'OSHA 30'],
+        phone: '(864) 432-5678',
+        email: 'mike.thompson@flooringpro.com'
+      },
+      personalQuote:
+        'I want you to feel confident, informed, and proud of the finished result.'
+    }),
+    []
+  );
 
-  // TimeEntryScreen has its own header, so render it directly
-  if (subScreen === 'time') {
-    return <TimeEntryScreen onBack={() => setSubScreen('main')} />;
-  }
+  const latestReview = {
+    clientName: 'Anderson Family',
+    date: 'Jan 22, 2026',
+    rating: 5,
+    feedback:
+      'Mike was professional, on time, and the craftsmanship was outstanding. The house stayed clean and the final result looks incredible.'
+  };
 
+  const reviewStats = {
+    ytd: 18,
+    tenureTotal: 18,
+    avgRating: 4.6
+  };
+
+  // Sub-screens
   if (subScreen !== 'main') {
     return (
-      <SubScreenWrapper 
-        title={getSubScreenTitle(subScreen)} 
+      <SubScreenWrapper
+        title={getSubScreenTitle(subScreen)}
         onBack={() => setSubScreen('main')}
-        colors={colors}
       >
-        {subScreen === 'reviews' && <ReviewsSubScreen employee={employee} colors={colors} />}
-        {subScreen === 'growth' && <GrowthSubScreen employee={employee} colors={colors} />}
-        {subScreen === 'training' && <TrainingSubScreen employee={employee} colors={colors} />}
-        {subScreen === 'calendar' && <CalendarSubScreen colors={colors} />}
-        {subScreen === 'msds' && <MSDSSubScreen colors={colors} />}
+        {subScreen === 'growth' && <GrowthSubScreen skillLevel={employee.skillLevel} />}
+        {subScreen === 'training' && <TrainingSubScreen />}
+        {subScreen === 'manual' && <EmployeeManualSubScreen />}
       </SubScreenWrapper>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: colors.background,
-      paddingBottom: '100px'
-    }}>
-      {/* Profile Header */}
-      <div style={{
-        padding: '24px 20px',
-        paddingTop: 'max(24px, env(safe-area-inset-top))',
-        background: `linear-gradient(180deg, ${colors.backgroundSecondary} 0%, ${colors.background} 100%)`
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {/* Avatar */}
-          <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            backgroundColor: colors.accent,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '28px',
-            fontWeight: '700',
-            color: '#FFFFFF',
-            overflow: 'hidden'
-          }}>
-            {employee.avatar ? (
-              <img 
-                src={employee.avatar} 
-                alt={employee.firstName}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
-              `${employee.firstName[0]}${employee.lastName[0]}`
-            )}
+    <div style={{ minHeight: '100vh', backgroundColor: colors.background }}>
+      {/* ================= HEADER ================= */}
+      <div
+        style={{
+          position: 'relative',
+          minHeight: 220,
+          padding: '24px 18px',
+          paddingTop: 'max(24px, env(safe-area-inset-top))',
+          borderBottom: `1px solid ${colors.border}`,
+          overflow: 'hidden'
+        }}
+      >
+        {/* Background */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url(${employee.avatar})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'right center',
+            filter: 'brightness(0.75)',
+            transform: 'scale(1.05)'
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'linear-gradient(90deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 70%, rgba(0,0,0,0.85) 100%)'
+          }}
+        />
+
+        {/* Back button */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(0.92)')}
+            onMouseLeave={(e) => (e.currentTarget.style.filter = 'brightness(1)')}
+            style={{
+              position: 'relative',
+              zIndex: 2,
+              marginBottom: 16,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              backgroundColor: 'rgba(0,0,0,0.45)',
+              border: `1px solid ${colors.border}`,
+              color: '#fff',
+              padding: '8px 12px',
+              borderRadius: 10,
+              cursor: 'pointer',
+              fontWeight: 800,
+              transition: 'filter 0.2s ease'
+            }}
+          >
+            <ArrowLeft size={16} />
+            Back
+          </button>
+        )}
+
+        {/* Header content */}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ color: '#fff', fontSize: 38, fontWeight: 900, margin: 0 }}>
+            {employee.firstName} {employee.lastName}
+          </h1>
+          <div style={{ color: '#9BE17C', fontSize: 18, fontWeight: 800 }}>
+            {employee.role}
           </div>
-          
-          <div style={{ flex: 1 }}>
-            <h1 style={{
-              color: colors.text,
-              fontSize: '24px',
-              fontWeight: '700',
-              margin: '0 0 4px 0'
-            }}>
-              {employee.firstName} {employee.lastName}
-            </h1>
-            <p style={{
-              color: colors.accent,
-              fontSize: '15px',
-              fontWeight: '600',
-              margin: '0 0 4px 0'
-            }}>
-              {employee.role}
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Star size={14} color="#D4A024" fill="#D4A024" />
-              <span style={{ color: '#D4A024', fontSize: '14px', fontWeight: '700' }}>
-                {avgRating}
-              </span>
-              <span style={{ color: colors.textSecondary, fontSize: '13px' }}>
-                ({employee.reviews.length} reviews)
-              </span>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+            <Pill label={`Skill Level ${employee.skillLevel}`} icon={<TrendingUp size={16} />} />
+            <Pill
+              label={`${reviewStats.avgRating.toFixed(1)} ★ (${reviewStats.tenureTotal})`}
+              icon={<Star size={16} />}
+              accent="#D4A024"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ================= BODY ================= */}
+      <div style={{ padding: 16, maxWidth: 900, margin: '0 auto' }}>
+        <Card title="Bio">
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            <li>{employee.bio.yearsExperience} years experience</li>
+            <li>{employee.bio.trainingClasses.join(', ')}</li>
+            <li>Certs: {employee.bio.certifications.join(', ')}</li>
+          </ul>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, marginTop: 14 }}>
+            <ContactPill icon="phone" value={employee.bio.phone} />
+            <ContactPill icon="email" value={employee.bio.email} />
+          </div>
+        </Card>
+
+        {/* Quote */}
+        <div style={{ marginTop: 14 }}>
+          <Card>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  backgroundColor: 'rgba(155, 225, 124, 0.16)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid rgba(155, 225, 124, 0.18)'
+                }}
+              >
+                <Quote size={20} color="#9BE17C" />
+              </div>
+
+              <div style={{ color: '#fff', fontStyle: 'italic', fontSize: 16, lineHeight: 1.35 }}>
+                “{employee.personalQuote}”
+              </div>
             </div>
-          </div>
+          </Card>
         </div>
 
-        {/* Quick Stats */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '12px',
-          marginTop: '20px'
-        }}>
-          <StatCard 
-            label="Skill Level" 
-            value={`Level ${employee.skillLevel}`} 
-            icon={TrendingUp}
-            color="#0F7BFF"
-            colors={colors}
-          />
-          <StatCard 
-            label="Jobs Done" 
-            value={completedJobs.toString()} 
-            icon={CheckCircle2}
-            color="#4F6A41"
-            colors={colors}
-          />
-          <StatCard 
-            label="Bonuses" 
-            value={`$${totalBonuses}`} 
-            icon={Gift}
-            color="#D4A024"
-            colors={colors}
-          />
-        </div>
-      </div>
+        {/* Review */}
+        <div style={{ marginTop: 14 }}>
+          <Card title="Latest Review" right={<Stars rating={latestReview.rating} />}>
+            <div style={{ fontSize: 13, opacity: 0.8, color: '#CFCFCF' }}>
+              {latestReview.clientName} • {latestReview.date}
+            </div>
+            <div style={{ marginTop: 8, color: '#FFFFFF', lineHeight: 1.55 }}>
+              “{latestReview.feedback}”
+            </div>
 
-      {/* Menu Items */}
-      <div style={{ padding: '20px' }}>
-        {/* Performance Section */}
-        <SectionHeader title="Performance" colors={colors} />
-        
-        <MenuItem 
-          icon={Star}
-          label="Customer Reviews"
-          subtitle={`${employee.reviews.length} reviews • ${avgRating} avg`}
-          onClick={() => setSubScreen('reviews')}
-          colors={colors}
-        />
-        <MenuItem 
-          icon={Target}
+            <div style={{ marginTop: 12, color: '#AFAFAF', fontSize: 13 }}>
+              YTD reviews: <span style={{ color: '#FFFFFF', fontWeight: 800 }}>{reviewStats.ytd}</span> • Total:{' '}
+              <span style={{ color: '#FFFFFF', fontWeight: 800 }}>{reviewStats.tenureTotal}</span>
+            </div>
+          </Card>
+        </div>
+
+        {/* Performance */}
+        <SectionHeader title="Performance" />
+
+        <MenuItem
           label="Growth Path"
-          subtitle={`Level ${employee.skillLevel} → Level ${employee.skillLevel + 1}`}
+          subtitle={`Level ${employee.skillLevel} → ${employee.skillLevel + 1}`}
           onClick={() => setSubScreen('growth')}
-          colors={colors}
+          icon={Target}
         />
-        <MenuItem 
-          icon={BookOpen}
+        <MenuItem
           label="Training Videos"
-          subtitle={`${employee.trainingCompleted.length} completed`}
+          subtitle="12 completed"
           onClick={() => setSubScreen('training')}
-          colors={colors}
+          icon={BookOpen}
         />
-
-        {/* Time & Schedule Section */}
-        <SectionHeader title="Time & Schedule" colors={colors} />
-        
-        <MenuItem 
-          icon={Clock}
-          label="Report Time"
-          subtitle="Log hours, view time entries"
-          onClick={() => setSubScreen('time')}
-          colors={colors}
-        />
-        <MenuItem 
-          icon={Calendar}
-          label="Calendar & Time Off"
-          subtitle="View schedule, request PTO"
-          onClick={() => setSubScreen('calendar')}
-          colors={colors}
-        />
-
-        {/* Resources Section */}
-        <SectionHeader title="Resources" colors={colors} />
-        
-        <MenuItem 
-          icon={AlertTriangle}
-          label="MSDS Sheets"
-          subtitle="Safety data sheets"
-          onClick={() => setSubScreen('msds')}
-          colors={colors}
-          iconColor="#E74C3C"
-        />
-
-        {/* Settings Section */}
-        <SectionHeader title="Account" colors={colors} />
-        
-        <MenuItem 
-          icon={Settings}
-          label="Settings"
-          onClick={() => console.log('Settings')}
-          colors={colors}
-        />
-        <MenuItem 
-          icon={LogOut}
-          label="Log Out"
-          onClick={() => console.log('Logout')}
-          colors={colors}
-          iconColor="#E74C3C"
+        <MenuItem
+          label="Employee Manual"
+          subtitle="Reference guide"
+          onClick={() => setSubScreen('manual')}
+          icon={FileText}
         />
       </div>
     </div>
   );
 }
 
-// Helper Components
-function StatCard({ label, value, icon: Icon, color, colors }: any) {
-  return (
-    <div style={{
-      backgroundColor: colors.backgroundSecondary,
-      borderRadius: '12px',
-      padding: '14px 12px',
-      textAlign: 'center',
-      border: `1px solid ${colors.border}`
-    }}>
-      <Icon size={20} color={color} style={{ marginBottom: '6px' }} />
-      <p style={{
-        color: colors.text,
-        fontSize: '16px',
-        fontWeight: '700',
-        margin: '0 0 2px 0'
-      }}>
-        {value}
-      </p>
-      <p style={{
-        color: colors.textSecondary,
-        fontSize: '11px',
-        margin: 0
-      }}>
-        {label}
-      </p>
-    </div>
-  );
+/* ================= Helpers ================= */
+
+function getSubScreenTitle(s: SubScreen) {
+  return {
+    main: 'Me',
+    growth: 'Growth Path',
+    training: 'Training',
+    manual: 'Employee Manual'
+  }[s];
 }
 
-function SectionHeader({ title, colors }: any) {
+function SectionHeader({ title }: { title: string }) {
   return (
-    <h3 style={{
-      color: colors.textSecondary,
-      fontSize: '12px',
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px',
-      margin: '24px 0 12px 0'
-    }}>
+    <h3
+      style={{
+        color: 'rgba(255,255,255,0.55)',
+        fontSize: 12,
+        fontWeight: 900,
+        textTransform: 'uppercase',
+        letterSpacing: '0.6px',
+        margin: '18px 0 10px 2px'
+      }}
+    >
       {title}
     </h3>
   );
 }
 
-function MenuItem({ icon: Icon, label, subtitle, onClick, colors, iconColor }: any) {
+function SubScreenWrapper({ title, onBack, children }: any) {
+  const { colors } = useTheme();
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: colors.background }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: 16,
+          paddingTop: 'max(16px, env(safe-area-inset-top))',
+          backgroundColor: colors.backgroundSecondary,
+          borderBottom: `1px solid ${colors.border}`
+        }}
+      >
+        <button
+          onClick={onBack}
+          onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(0.92)')}
+          onMouseLeave={(e) => (e.currentTarget.style.filter = 'brightness(1)')}
+          style={{
+            padding: 10,
+            borderRadius: 10,
+            border: `1px solid ${colors.border}`,
+            backgroundColor: colors.backgroundTertiary,
+            color: '#fff',
+            cursor: 'pointer',
+            transition: 'filter 0.2s ease'
+          }}
+        >
+          <ArrowLeft size={16} />
+        </button>
+        <h2 style={{ margin: 0, color: '#fff', fontWeight: 900, fontSize: 18 }}>{title}</h2>
+      </div>
+
+      <div style={{ padding: 16, maxWidth: 900, margin: '0 auto' }}>{children}</div>
+    </div>
+  );
+}
+
+function Card({ title, right, children }: any) {
+  const { colors } = useTheme();
+  return (
+    <div
+      style={{
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        borderRadius: 14,
+        border: `1px solid rgba(255,255,255,0.10)`,
+        padding: 14,
+        marginBottom: 12,
+        boxShadow: '0 10px 26px rgba(0,0,0,0.35)'
+      }}
+    >
+      {(title || right) && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, alignItems: 'center' }}>
+          <strong style={{ color: '#fff', fontSize: 16, fontWeight: 900 }}>{title}</strong>
+          {right}
+        </div>
+      )}
+      <div style={{ color: '#EDEDED', lineHeight: 1.55 }}>{children}</div>
+    </div>
+  );
+}
+
+function Pill({ label, icon, accent }: any) {
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 12px',
+        borderRadius: 999,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        border: '1px solid rgba(255,255,255,0.14)',
+        color: '#fff',
+        fontWeight: 900
+      }}
+    >
+      <span style={{ color: accent || '#9BE17C', display: 'flex', alignItems: 'center' }}>{icon}</span>
+      {label}
+    </div>
+  );
+}
+
+function Stars({ rating }: { rating: number }) {
+  return (
+    <div style={{ display: 'flex', gap: 2 }}>
+      {[1, 2, 3, 4, 5].map((s) => (
+        <Star key={s} size={16} fill={s <= rating ? '#D4A024' : 'transparent'} color="#D4A024" />
+      ))}
+    </div>
+  );
+}
+
+function MenuItem({ icon: Icon, label, subtitle, onClick }: any) {
   return (
     <button
       onClick={onClick}
+      onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(0.92)')}
+      onMouseLeave={(e) => (e.currentTarget.style.filter = 'brightness(1)')}
       style={{
         width: '100%',
         display: 'flex',
         alignItems: 'center',
-        gap: '14px',
-        padding: '14px 16px',
-        backgroundColor: colors.backgroundSecondary,
-        border: `1px solid ${colors.border}`,
-        borderRadius: '12px',
+        gap: 14,
+        padding: 14,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        marginBottom: 10,
         cursor: 'pointer',
-        marginBottom: '8px',
-        textAlign: 'left'
+        textAlign: 'left',
+        transition: 'filter 0.2s ease',
+        boxShadow: '0 10px 26px rgba(0,0,0,0.35)'
       }}
     >
-      <div style={{
-        width: '40px',
-        height: '40px',
-        borderRadius: '10px',
-        backgroundColor: colors.backgroundTertiary,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <Icon size={20} color={iconColor || colors.accent} />
+      <div
+        style={{
+          width: 46,
+          height: 46,
+          borderRadius: 12,
+          backgroundColor: 'rgba(155, 225, 124, 0.10)',
+          border: '1px solid rgba(155, 225, 124, 0.16)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flex: '0 0 auto'
+        }}
+      >
+        <Icon size={22} color="#9BE17C" />
       </div>
-      <div style={{ flex: 1 }}>
-        <p style={{
-          color: colors.text,
-          fontSize: '15px',
-          fontWeight: '600',
-          margin: 0
-        }}>
-          {label}
-        </p>
-        {subtitle && (
-          <p style={{
-            color: colors.textSecondary,
-            fontSize: '13px',
-            margin: '2px 0 0 0'
-          }}>
-            {subtitle}
-          </p>
-        )}
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ color: '#fff', fontSize: 16, fontWeight: 900 }}>{label}</div>
+        {subtitle ? <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 2 }}>{subtitle}</div> : null}
       </div>
-      <ChevronRight size={20} color={colors.textTertiary} />
+
+      <ChevronRight size={22} color="rgba(255,255,255,0.55)" />
     </button>
   );
 }
 
-function SubScreenWrapper({ title, onBack, colors, children }: any) {
+function ContactPill({ icon, value }: { icon: 'phone' | 'email'; value: string }) {
+  const emoji = icon === 'phone' ? '📞' : '✉️';
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: colors.background,
-      paddingBottom: '40px'
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: '16px 20px',
-        paddingTop: 'max(16px, env(safe-area-inset-top))',
-        backgroundColor: colors.backgroundSecondary,
-        borderBottom: `1px solid ${colors.border}`,
+    <div
+      style={{
+        borderRadius: 12,
+        border: `1px solid rgba(255,255,255,0.14)`,
+        backgroundColor: 'rgba(0,0,0,0.25)',
+        padding: '10px 12px',
         display: 'flex',
         alignItems: 'center',
-        gap: '12px'
-      }}>
-        <button
-          onClick={onBack}
-          style={{
-            padding: '8px',
-            backgroundColor: colors.backgroundTertiary,
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            color: colors.text
-          }}
-        >
-          ←
-        </button>
-        <h1 style={{
-          color: colors.text,
-          fontSize: '18px',
-          fontWeight: '700',
-          margin: 0
-        }}>
-          {title}
-        </h1>
-      </div>
-      <div style={{ padding: '20px' }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function getSubScreenTitle(screen: SubScreen): string {
-  const titles: Record<SubScreen, string> = {
-    main: 'Me',
-    reviews: 'Customer Reviews',
-    growth: 'Growth Path',
-    training: 'Training Videos',
-    time: 'Report Time',
-    calendar: 'Calendar & Time Off',
-    msds: 'MSDS Sheets'
-  };
-  return titles[screen];
-}
-
-// Sub-screens
-function ReviewsSubScreen({ employee, colors }: any) {
-  return (
-    <div>
-      {employee.reviews.map((review: any) => (
-        <div key={review.id} style={{
-          backgroundColor: colors.backgroundSecondary,
-          borderRadius: '12px',
-          padding: '16px',
-          marginBottom: '12px',
-          border: `1px solid ${colors.border}`
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ color: colors.text, fontWeight: '600' }}>{review.clientName}</span>
-            <div style={{ display: 'flex', gap: '2px' }}>
-              {[1,2,3,4,5].map(star => (
-                <Star 
-                  key={star} 
-                  size={14} 
-                  color="#D4A024" 
-                  fill={star <= review.rating ? "#D4A024" : "transparent"}
-                />
-              ))}
-            </div>
-          </div>
-          <p style={{ color: colors.textSecondary, fontSize: '14px', margin: '0 0 8px 0' }}>
-            "{review.feedback}"
-          </p>
-          <p style={{ color: colors.textTertiary, fontSize: '12px', margin: 0 }}>
-            {review.date}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function GrowthSubScreen({ employee, colors }: any) {
-  const levels = [
-    { level: 1, title: 'Apprentice', requirements: ['Complete Safety Training', 'Shadow 5 jobs'] },
-    { level: 2, title: 'Installer', requirements: ['Complete Hardwood 101', 'Lead 10 jobs', 'Avg rating 4.0+'] },
-    { level: 3, title: 'Lead Installer', requirements: ['Complete LVP Certification', 'Lead 50 jobs', 'Avg rating 4.5+'] },
-    { level: 4, title: 'Senior Installer', requirements: ['Train 2 apprentices', 'Lead 100 jobs', 'Avg rating 4.8+'] },
-    { level: 5, title: 'Master Installer', requirements: ['All certifications', 'Lead 200 jobs', 'Train 5 installers'] },
-  ];
-
-  return (
-    <div>
-      {levels.map((lvl, idx) => {
-        const isCurrent = lvl.level === employee.skillLevel;
-        const isCompleted = lvl.level < employee.skillLevel;
-        const isNext = lvl.level === employee.skillLevel + 1;
-        
-        return (
-          <div key={lvl.level} style={{
-            backgroundColor: isCurrent ? colors.accentLight : colors.backgroundSecondary,
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '12px',
-            border: `2px solid ${isCurrent ? colors.accent : colors.border}`,
-            opacity: isCompleted ? 0.6 : 1
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: isCompleted ? '#4F6A41' : isCurrent ? colors.accent : colors.backgroundTertiary,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                {isCompleted ? (
-                  <CheckCircle2 size={18} color="#FFFFFF" />
-                ) : (
-                  <span style={{ color: isCurrent ? '#FFFFFF' : colors.textSecondary, fontWeight: '700' }}>
-                    {lvl.level}
-                  </span>
-                )}
-              </div>
-              <div>
-                <p style={{ color: colors.text, fontWeight: '700', margin: 0 }}>{lvl.title}</p>
-                {isCurrent && <span style={{ color: colors.accent, fontSize: '12px' }}>Current Level</span>}
-                {isNext && <span style={{ color: '#D4A024', fontSize: '12px' }}>Next Goal</span>}
-              </div>
-            </div>
-            {(isCurrent || isNext) && (
-              <ul style={{ margin: '8px 0 0 44px', padding: 0, listStyle: 'none' }}>
-                {lvl.requirements.map((req, i) => (
-                  <li key={i} style={{ color: colors.textSecondary, fontSize: '13px', marginBottom: '4px' }}>
-                    • {req}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function TrainingSubScreen({ employee, colors }: any) {
-  const videos = [
-    { id: '1', title: 'Safety Basics', duration: '15 min', completed: true },
-    { id: '2', title: 'Hardwood 101', duration: '45 min', completed: true },
-    { id: '3', title: 'Customer Service', duration: '20 min', completed: true },
-    { id: '4', title: 'LVP Installation', duration: '60 min', completed: false },
-    { id: '5', title: 'Stain Application', duration: '30 min', completed: false },
-    { id: '6', title: 'Advanced Sanding', duration: '40 min', completed: false },
-  ];
-
-  return (
-    <div>
-      {videos.map(video => (
-        <div key={video.id} style={{
+        gap: 10,
+        color: '#FFFFFF',
+        fontWeight: 900
+      }}
+    >
+      <div
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 10,
+          backgroundColor: 'rgba(255,255,255,0.08)',
           display: 'flex',
           alignItems: 'center',
-          gap: '14px',
-          backgroundColor: colors.backgroundSecondary,
-          borderRadius: '12px',
-          padding: '14px',
-          marginBottom: '10px',
-          border: `1px solid ${colors.border}`
-        }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '10px',
-            backgroundColor: video.completed ? '#4F6A41' : colors.accent,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            {video.completed ? (
-              <CheckCircle2 size={24} color="#FFFFFF" />
-            ) : (
-              <Play size={24} color="#FFFFFF" />
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ color: colors.text, fontWeight: '600', margin: 0 }}>{video.title}</p>
-            <p style={{ color: colors.textSecondary, fontSize: '13px', margin: '2px 0 0 0' }}>
-              {video.duration}
-            </p>
-          </div>
-          {video.completed && (
-            <span style={{ color: '#4F6A41', fontSize: '12px', fontWeight: '600' }}>
-              Completed
-            </span>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CalendarSubScreen({ colors }: any) {
-  const [showRequestForm, setShowRequestForm] = useState(false);
-  
-  const timeOffRequests = [
-    { id: '1', dates: 'Dec 25-26', type: 'PTO', status: 'Approved' },
-    { id: '2', dates: 'Jan 1', type: 'PTO', status: 'Approved' },
-    { id: '3', dates: 'Jan 15-17', type: 'Personal', status: 'Pending' },
-  ];
-
-  return (
-    <div>
-      {/* Request Time Off Button */}
-      <button
-        onClick={() => setShowRequestForm(!showRequestForm)}
-        style={{
-          width: '100%',
-          padding: '16px',
-          backgroundColor: colors.accent,
-          border: 'none',
-          borderRadius: '12px',
-          color: '#FFFFFF',
-          fontSize: '16px',
-          fontWeight: '700',
-          cursor: 'pointer',
-          marginBottom: '24px'
+          justifyContent: 'center'
         }}
       >
-        + Request Time Off
-      </button>
-
-      {/* Time Off Requests */}
-      <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: '700', marginBottom: '12px' }}>
-        My Requests
-      </h3>
-      {timeOffRequests.map(req => (
-        <div key={req.id} style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: colors.backgroundSecondary,
-          borderRadius: '12px',
-          padding: '14px 16px',
-          marginBottom: '10px',
-          border: `1px solid ${colors.border}`
-        }}>
-          <div>
-            <p style={{ color: colors.text, fontWeight: '600', margin: 0 }}>{req.dates}</p>
-            <p style={{ color: colors.textSecondary, fontSize: '13px', margin: '2px 0 0 0' }}>{req.type}</p>
-          </div>
-          <span style={{
-            padding: '4px 12px',
-            borderRadius: '12px',
-            fontSize: '12px',
-            fontWeight: '700',
-            backgroundColor: req.status === 'Approved' ? 'rgba(79, 106, 65, 0.2)' : 'rgba(212, 160, 36, 0.2)',
-            color: req.status === 'Approved' ? '#4F6A41' : '#D4A024'
-          }}>
-            {req.status}
-          </span>
-        </div>
-      ))}
+        <span style={{ fontSize: 18 }}>{emoji}</span>
+      </div>
+      <div style={{ fontSize: 14, wordBreak: 'break-word' }}>{value}</div>
     </div>
   );
 }
 
-function MSDSSubScreen({ colors }: any) {
-  const msdsSheets = [
-    { id: '1', name: 'Bona Traffic HD', category: 'Finish' },
-    { id: '2', name: 'DuraSeal Stain', category: 'Stain' },
-    { id: '3', name: 'Bona DriFast Stain', category: 'Stain' },
-    { id: '4', name: 'Pallmann Magic Oil', category: 'Finish' },
-    { id: '5', name: 'Wood Floor Adhesive', category: 'Adhesive' },
-    { id: '6', name: 'Floor Leveling Compound', category: 'Prep' },
-  ];
+/* ================= Sub-screens ================= */
 
+function GrowthSubScreen({ skillLevel }: any) {
+  return (
+    <div style={{ color: '#fff' }}>
+      Growth path (example). Current skill level: <b>{skillLevel}</b>
+    </div>
+  );
+}
+
+function TrainingSubScreen() {
+  return <div style={{ color: '#fff' }}>Training videos list (example).</div>;
+}
+
+function EmployeeManualSubScreen() {
   return (
     <div>
-      <p style={{ color: colors.textSecondary, fontSize: '14px', marginBottom: '16px' }}>
-        Material Safety Data Sheets for products we use. Tap to view PDF.
-      </p>
-      {msdsSheets.map(sheet => (
-        <button
-          key={sheet.id}
-          onClick={() => console.log('Open MSDS:', sheet.name)}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-            backgroundColor: colors.backgroundSecondary,
-            borderRadius: '12px',
-            padding: '14px 16px',
-            marginBottom: '10px',
-            border: `1px solid ${colors.border}`,
-            cursor: 'pointer',
-            textAlign: 'left'
-          }}
-        >
-          <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '10px',
-            backgroundColor: 'rgba(231, 76, 60, 0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <FileText size={20} color="#E74C3C" />
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ color: colors.text, fontWeight: '600', margin: 0 }}>{sheet.name}</p>
-            <p style={{ color: colors.textSecondary, fontSize: '13px', margin: '2px 0 0 0' }}>
-              {sheet.category}
-            </p>
-          </div>
-          <ChevronRight size={20} color={colors.textTertiary} />
-        </button>
-      ))}
+      <button
+        onClick={() => window.open(EMPLOYEE_MANUAL_PDF, '_blank', 'noopener,noreferrer')}
+        style={{
+          width: '100%',
+          padding: 14,
+          borderRadius: 12,
+          backgroundColor: 'rgba(155,225,124,0.18)',
+          border: '1px solid rgba(155,225,124,0.22)',
+          color: '#fff',
+          fontWeight: 900,
+          cursor: 'pointer'
+        }}
+      >
+        Open Employee Manual (PDF)
+      </button>
     </div>
   );
 }

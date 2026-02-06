@@ -10,12 +10,13 @@ import {
   X,
   Trash2,
   Edit3,
-  Image as ImageIcon,
   Camera,
-  Check,
   AlertCircle
 } from 'lucide-react';
 import { useTheme } from '../ThemeProvider';
+
+// ✅ TimeSheet Primary Red (less pink, more true red)
+const TIMESHEET_RED = '#E74C3C';
 
 // Types
 interface TimeLog {
@@ -131,36 +132,19 @@ const sampleTimeLogs: TimeLog[] = [
 const sampleJobs: Job[] = [
   { id: 'job-001', name: 'Anderson Residence', address: '742 Maple Ridge Dr' },
   { id: 'job-002', name: 'Thompson Office', address: '1856 Oak Valley Ct' },
-  { id: 'job-003', name: 'Wilson Home', address: '423 Riverside Dr' },
+  { id: 'job-003', name: 'Wilson Home', address: '423 Riverside Dr' }
 ];
 
 const sampleTasks: GeneralTask[] = [
   { id: 'task-001', name: 'Shop Maintenance' },
   { id: 'task-002', name: 'Training' },
   { id: 'task-003', name: 'Equipment Repair' },
-  { id: 'task-004', name: 'Travel Time' },
+  { id: 'task-004', name: 'Travel Time' }
 ];
 
-const typeOfWorkOptions = [
-  'Installation',
-  'Sanding',
-  '1st Coat',
-  '2nd Coat',
-  'Final Coat',
-  'Repairs',
-  'Others'
-];
+const typeOfWorkOptions = ['Installation', 'Sanding', '1st Coat', '2nd Coat', 'Final Coat', 'Repairs', 'Others'];
 
-const breakTimeOptions = [
-  '0 min',
-  '15 min',
-  '30 min',
-  '45 min',
-  '1 hr',
-  '1 hr 15 min',
-  '1 hr 30 min',
-  '2 hr'
-];
+const breakTimeOptions = ['0 min', '15 min', '30 min', '45 min', '1 hr', '1 hr 15 min', '1 hr 30 min', '2 hr'];
 
 // Helper to generate time options (5:00 AM to 9:00 PM in 15-min intervals)
 const generateTimeOptions = () => {
@@ -198,7 +182,7 @@ const calculateTotalHours = (startTime: string, endTime: string, breakTime: stri
 
   // Parse break time
   let breakMinutes = 0;
-  const breakMatch = breakTime.match(/(\d+)\s*hr/)
+  const breakMatch = breakTime.match(/(\d+)\s*hr/);
   const breakMinMatch = breakTime.match(/(\d+)\s*min/);
   if (breakMatch) breakMinutes += parseInt(breakMatch[1]) * 60;
   if (breakMinMatch) breakMinutes += parseInt(breakMinMatch[1]);
@@ -229,36 +213,33 @@ const formatDate = (dateStr: string) => {
 const groupLogsByDate = (logs: TimeLog[]) => {
   const grouped: Record<string, TimeLog[]> = {};
   logs.forEach(log => {
-    if (!grouped[log.dateOfWork]) {
-      grouped[log.dateOfWork] = [];
-    }
+    if (!grouped[log.dateOfWork]) grouped[log.dateOfWork] = [];
     grouped[log.dateOfWork].push(log);
   });
-  // Sort by date descending
-  return Object.entries(grouped).sort((a, b) => 
-    new Date(b[0]).getTime() - new Date(a[0]).getTime()
-  );
+  return Object.entries(grouped).sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
 };
 
 // Status Badge Component
-const StatusBadge = ({ status, colors }: { status: string; colors: any }) => {
+const StatusBadge = ({ status }: { status: string }) => {
   const statusStyles: Record<string, { bg: string; text: string }> = {
     Pending: { bg: 'rgba(244, 180, 0, 0.2)', text: '#F4B400' },
     Approved: { bg: 'rgba(76, 175, 80, 0.2)', text: '#4CAF50' },
-    Rejected: { bg: 'rgba(231, 76, 60, 0.2)', text: '#E74C3C' }
+    Rejected: { bg: 'rgba(231, 76, 60, 0.2)', text: TIMESHEET_RED }
   };
 
   const style = statusStyles[status] || statusStyles.Pending;
 
   return (
-    <span style={{
-      padding: '4px 10px',
-      borderRadius: '12px',
-      fontSize: '11px',
-      fontWeight: '700',
-      backgroundColor: style.bg,
-      color: style.text
-    }}>
+    <span
+      style={{
+        padding: '4px 10px',
+        borderRadius: '12px',
+        fontSize: '11px',
+        fontWeight: '700',
+        backgroundColor: style.bg,
+        color: style.text
+      }}
+    >
       {status}
     </span>
   );
@@ -290,15 +271,18 @@ const Dropdown = ({
 
   return (
     <div style={{ marginBottom: '16px' }}>
-      <label style={{
-        display: 'block',
-        fontSize: '14px',
-        fontWeight: '600',
-        color: colors.text,
-        marginBottom: '6px'
-      }}>
-        {label} {required && <span style={{ color: '#E74C3C' }}>*</span>}
+      <label
+        style={{
+          display: 'block',
+          fontSize: '14px',
+          fontWeight: '600',
+          color: colors.text,
+          marginBottom: '6px'
+        }}
+      >
+        {label} {required && <span style={{ color: TIMESHEET_RED }}>*</span>}
       </label>
+
       <div style={{ position: 'relative' }}>
         <button
           type="button"
@@ -308,7 +292,7 @@ const Dropdown = ({
             width: '100%',
             padding: '12px 16px',
             backgroundColor: disabled ? colors.backgroundTertiary : colors.backgroundSecondary,
-            border: `1px solid ${error ? '#E74C3C' : colors.border}`,
+            border: `1px solid ${error ? TIMESHEET_RED : colors.border}`,
             borderRadius: '10px',
             fontSize: '14px',
             color: value ? colors.text : colors.textTertiary,
@@ -324,21 +308,23 @@ const Dropdown = ({
         </button>
 
         {isOpen && (
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            backgroundColor: colors.backgroundElevated,
-            border: `1px solid ${colors.border}`,
-            borderRadius: '10px',
-            marginTop: '4px',
-            maxHeight: '200px',
-            overflowY: 'auto',
-            zIndex: 100,
-            boxShadow: `0 4px 16px ${colors.shadow}`
-          }}>
-            {options.map((option) => (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              backgroundColor: colors.backgroundElevated,
+              border: `1px solid ${colors.border}`,
+              borderRadius: '10px',
+              marginTop: '4px',
+              maxHeight: '200px',
+              overflowY: 'auto',
+              zIndex: 100,
+              boxShadow: `0 4px 16px ${colors.shadow}`
+            }}
+          >
+            {options.map(option => (
               <button
                 key={option.value}
                 type="button"
@@ -364,9 +350,8 @@ const Dropdown = ({
           </div>
         )}
       </div>
-      {error && (
-        <p style={{ color: '#E74C3C', fontSize: '12px', marginTop: '4px' }}>{error}</p>
-      )}
+
+      {error && <p style={{ color: TIMESHEET_RED, fontSize: '12px', marginTop: '4px' }}>{error}</p>}
     </div>
   );
 };
@@ -382,9 +367,7 @@ interface TimeEntryFormProps {
 }
 
 const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: TimeEntryFormProps) => {
-  const [logType, setLogType] = useState<'Project Logs' | 'General Time Logs'>(
-    initialData?.logType || 'Project Logs'
-  );
+  const [logType, setLogType] = useState<'Project Logs' | 'General Time Logs'>(initialData?.logType || 'Project Logs');
   const [dateOfWork, setDateOfWork] = useState(initialData?.dateOfWork || new Date().toISOString().split('T')[0]);
   const [selectedJob, setSelectedJob] = useState(initialData?.jobId || '');
   const [selectedTask, setSelectedTask] = useState(initialData?.taskId || '');
@@ -401,21 +384,11 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (logType === 'Project Logs' && !selectedJob) {
-      newErrors.jobName = 'Job Name is required';
-    }
-    if (logType === 'General Time Logs' && !selectedTask) {
-      newErrors.taskName = 'Task Name is required';
-    }
-    if (!typeOfWork) {
-      newErrors.typeOfWork = 'Type of Work is required';
-    }
-    if (!startTime) {
-      newErrors.startTime = 'Start Time is required';
-    }
-    if (!endTime) {
-      newErrors.endTime = 'End Time is required';
-    }
+    if (logType === 'Project Logs' && !selectedJob) newErrors.jobName = 'Job Name is required';
+    if (logType === 'General Time Logs' && !selectedTask) newErrors.taskName = 'Task Name is required';
+    if (!typeOfWork) newErrors.typeOfWork = 'Type of Work is required';
+    if (!startTime) newErrors.startTime = 'Start Time is required';
+    if (!endTime) newErrors.endTime = 'End Time is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -445,29 +418,33 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: colors.background,
-      zIndex: 1000,
-      overflowY: 'auto'
-    }}>
-      {/* Header */}
-      <div style={{
-        position: 'sticky',
+    <div
+      style={{
+        position: 'fixed',
         top: 0,
-        backgroundColor: colors.backgroundSecondary,
-        padding: '16px 20px',
-        paddingTop: 'max(16px, env(safe-area-inset-top))',
-        borderBottom: `1px solid ${colors.border}`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        zIndex: 10
-      }}>
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: colors.background,
+        zIndex: 1000,
+        overflowY: 'auto'
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          backgroundColor: colors.backgroundSecondary,
+          padding: '16px 20px',
+          paddingTop: 'max(16px, env(safe-area-inset-top))',
+          borderBottom: `1px solid ${colors.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          zIndex: 10
+        }}
+      >
         <button
           onClick={onClose}
           style={{
@@ -478,20 +455,17 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            color: colors.accent
+            color: TIMESHEET_RED
           }}
         >
           <ChevronLeft size={24} />
           <span style={{ fontSize: '16px', fontWeight: '600' }}>Cancel</span>
         </button>
-        <h1 style={{
-          color: colors.text,
-          fontSize: '18px',
-          fontWeight: '700',
-          margin: 0
-        }}>
+
+        <h1 style={{ color: colors.text, fontSize: '18px', fontWeight: '700', margin: 0 }}>
           {initialData ? 'Edit Time Log' : 'Log Time'}
         </h1>
+
         <div style={{ width: '80px' }} />
       </div>
 
@@ -499,17 +473,12 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
       <div style={{ padding: '20px', paddingBottom: '120px' }}>
         {/* Log Type Selection */}
         <div style={{ marginBottom: '24px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: colors.text,
-            marginBottom: '10px'
-          }}>
-            Log Type <span style={{ color: '#E74C3C' }}>*</span>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: colors.text, marginBottom: '10px' }}>
+            Log Type <span style={{ color: TIMESHEET_RED }}>*</span>
           </label>
+
           <div style={{ display: 'flex', gap: '12px' }}>
-            {['Project Logs', 'General Time Logs'].map((type) => (
+            {['Project Logs', 'General Time Logs'].map(type => (
               <button
                 key={type}
                 type="button"
@@ -517,8 +486,8 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
                 style={{
                   flex: 1,
                   padding: '14px 16px',
-                  backgroundColor: logType === type ? colors.accent : colors.backgroundSecondary,
-                  border: `1px solid ${logType === type ? colors.accent : colors.border}`,
+                  backgroundColor: logType === type ? TIMESHEET_RED : colors.backgroundSecondary,
+                  border: `1px solid ${logType === type ? TIMESHEET_RED : colors.border}`,
                   borderRadius: '12px',
                   color: logType === type ? '#FFFFFF' : colors.text,
                   fontSize: '14px',
@@ -539,20 +508,15 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
 
         {/* Date of Work */}
         <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: colors.text,
-            marginBottom: '6px'
-          }}>
-            Date of Work <span style={{ color: '#E74C3C' }}>*</span>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: colors.text, marginBottom: '6px' }}>
+            Date of Work <span style={{ color: TIMESHEET_RED }}>*</span>
           </label>
+
           <div style={{ position: 'relative' }}>
             <input
               type="date"
               value={dateOfWork}
-              onChange={(e) => setDateOfWork(e.target.value)}
+              onChange={e => setDateOfWork(e.target.value)}
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -564,8 +528,8 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
                 outline: 'none'
               }}
             />
-            <Calendar 
-              size={18} 
+            <Calendar
+              size={18}
               color={colors.textSecondary}
               style={{
                 position: 'absolute',
@@ -617,7 +581,6 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
 
         {/* Time Row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-          {/* Start Time */}
           <Dropdown
             label="Start Time"
             value={startTime}
@@ -628,8 +591,7 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
             error={errors.startTime}
             colors={colors}
           />
-          
-          {/* End Time */}
+
           <Dropdown
             label="End Time"
             value={endTime}
@@ -652,26 +614,22 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
             placeholder="Break"
             colors={colors}
           />
-          
+
           <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: colors.text,
-              marginBottom: '6px'
-            }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: colors.text, marginBottom: '6px' }}>
               Total Hours
             </label>
-            <div style={{
-              padding: '12px 16px',
-              backgroundColor: colors.backgroundTertiary,
-              border: `1px solid ${colors.border}`,
-              borderRadius: '10px',
-              fontSize: '14px',
-              color: colors.accent,
-              fontWeight: '700'
-            }}>
+            <div
+              style={{
+                padding: '12px 16px',
+                backgroundColor: colors.backgroundTertiary,
+                border: `1px solid ${colors.border}`,
+                borderRadius: '10px',
+                fontSize: '14px',
+                color: TIMESHEET_RED,
+                fontWeight: '700'
+              }}
+            >
               {totalHours || '0 min'}
             </div>
           </div>
@@ -679,18 +637,12 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
 
         {/* Note */}
         <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: colors.text,
-            marginBottom: '6px'
-          }}>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: colors.text, marginBottom: '6px' }}>
             Note
           </label>
           <textarea
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onChange={e => setNote(e.target.value)}
             placeholder="Add a note (optional)"
             rows={3}
             style={{
@@ -710,24 +662,22 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
 
         {/* Images */}
         <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: colors.text,
-            marginBottom: '6px'
-          }}>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: colors.text, marginBottom: '6px' }}>
             Photos
           </label>
+
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {images.map((img, idx) => (
-              <div key={idx} style={{
-                position: 'relative',
-                width: '80px',
-                height: '80px',
-                borderRadius: '10px',
-                overflow: 'hidden'
-              }}>
+              <div
+                key={idx}
+                style={{
+                  position: 'relative',
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '10px',
+                  overflow: 'hidden'
+                }}
+              >
                 <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <button
                   type="button"
@@ -751,12 +701,10 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
                 </button>
               </div>
             ))}
+
             <button
               type="button"
-              onClick={() => {
-                // In production, this would open file picker or camera
-                console.log('Add photo');
-              }}
+              onClick={() => console.log('Add photo')}
               style={{
                 width: '80px',
                 height: '80px',
@@ -779,33 +727,29 @@ const TimeEntryForm = ({ onClose, onSubmit, initialData, jobs, tasks, colors }: 
       </div>
 
       {/* Submit Button */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: '16px 20px',
-        paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
-        backgroundColor: colors.backgroundSecondary,
-        borderTop: `1px solid ${colors.border}`
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '12px'
-        }}>
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: '16px 20px',
+          paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+          backgroundColor: colors.backgroundSecondary,
+          borderTop: `1px solid ${colors.border}`
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           <span style={{ color: colors.textSecondary, fontSize: '14px' }}>Total Hours</span>
-          <span style={{ color: colors.accent, fontSize: '18px', fontWeight: '700' }}>
-            {totalHours || '0 min'}
-          </span>
+          <span style={{ color: TIMESHEET_RED, fontSize: '18px', fontWeight: '700' }}>{totalHours || '0 min'}</span>
         </div>
+
         <button
           onClick={handleSubmit}
           style={{
             width: '100%',
             padding: '16px',
-            backgroundColor: colors.accent,
+            backgroundColor: TIMESHEET_RED,
             border: 'none',
             borderRadius: '12px',
             color: '#FFFFFF',
@@ -841,12 +785,12 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
     const now = new Date();
     const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
     weekStart.setHours(0, 0, 0, 0);
-    
+
     if (logDate >= weekStart) {
       const match = log.totalHours.match(/(\d+)\s*hr/);
       const minMatch = log.totalHours.match(/(\d+)\s*min/);
-      let hours = match ? parseInt(match[1]) : 0;
-      let mins = minMatch ? parseInt(minMatch[1]) : 0;
+      const hours = match ? parseInt(match[1]) : 0;
+      const mins = minMatch ? parseInt(minMatch[1]) : 0;
       return total + hours + mins / 60;
     }
     return total;
@@ -854,10 +798,10 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
 
   const handleClockIn = () => {
     const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    const timeStr = now.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
     setClockInTime(timeStr);
     setClockedIn(true);
@@ -866,7 +810,6 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
   const handleClockOut = () => {
     setClockedIn(false);
     setClockInTime(null);
-    // In production, this would create a time log entry
   };
 
   const handleAddLog = (logData: Omit<TimeLog, 'id' | 'approval'>) => {
@@ -881,11 +824,9 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
 
   const handleEditLog = (logData: Omit<TimeLog, 'id' | 'approval'>) => {
     if (!editingLog) return;
-    setTimeLogs(timeLogs.map(log => 
-      log.id === editingLog.id 
-        ? { ...log, ...logData, approval: 'Pending' }
-        : log
-    ));
+    setTimeLogs(
+      timeLogs.map(log => (log.id === editingLog.id ? { ...log, ...logData, approval: 'Pending' } : log))
+    );
     setEditingLog(null);
     setShowForm(false);
   };
@@ -895,11 +836,7 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
   };
 
   const toggleDateExpanded = (date: string) => {
-    setExpandedDates(prev => 
-      prev.includes(date) 
-        ? prev.filter(d => d !== date)
-        : [...prev, date]
-    );
+    setExpandedDates(prev => (prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]));
   };
 
   const groupedLogs = groupLogsByDate(timeLogs);
@@ -909,6 +846,7 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
     if (groupedLogs.length > 0 && expandedDates.length === 0) {
       setExpandedDates([groupedLogs[0][0]]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (showForm) {
@@ -928,40 +866,26 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: colors.background,
-      paddingBottom: '100px'
-    }}>
+    <div style={{ minHeight: '100vh', backgroundColor: colors.background, paddingBottom: '100px' }}>
       {/* Header */}
-      <div style={{
-        padding: '16px 20px',
-        paddingTop: 'max(16px, env(safe-area-inset-top))',
-        backgroundColor: colors.backgroundSecondary,
-        borderBottom: `1px solid ${colors.border}`,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px'
-      }}>
+      <div
+        style={{
+          padding: '16px 20px',
+          paddingTop: 'max(16px, env(safe-area-inset-top))',
+          backgroundColor: colors.backgroundSecondary,
+          borderBottom: `1px solid ${colors.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}
+      >
         <button
           onClick={onBack}
-          style={{
-            backgroundColor: 'transparent',
-            border: 'none',
-            padding: '8px',
-            cursor: 'pointer'
-          }}
+          style={{ backgroundColor: 'transparent', border: 'none', padding: '8px', cursor: 'pointer' }}
         >
           <ChevronLeft size={24} color={colors.text} />
         </button>
-        <h1 style={{
-          color: colors.text,
-          fontSize: '20px',
-          fontWeight: '700',
-          margin: 0
-        }}>
-          Report Time
-        </h1>
+        <h1 style={{ color: colors.text, fontSize: '20px', fontWeight: '700', margin: 0 }}>Report Time</h1>
       </div>
 
       <div style={{ padding: '20px' }}>
@@ -971,7 +895,7 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
           style={{
             width: '100%',
             padding: '24px',
-            backgroundColor: clockedIn ? '#E74C3C' : '#4F6A41',
+            backgroundColor: clockedIn ? TIMESHEET_RED : '#4F6A41',
             border: 'none',
             borderRadius: '16px',
             cursor: 'pointer',
@@ -991,28 +915,30 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
         </button>
 
         {/* This Week Summary */}
-        <div style={{
-          backgroundColor: colors.backgroundSecondary,
-          borderRadius: '12px',
-          padding: '16px',
-          border: `1px solid ${colors.border}`,
-          marginBottom: '20px'
-        }}>
+        <div
+          style={{
+            backgroundColor: colors.backgroundSecondary,
+            borderRadius: '12px',
+            padding: '16px',
+            border: `1px solid ${colors.border}`,
+            marginBottom: '20px'
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: colors.textSecondary, fontSize: '14px' }}>This Week</span>
-            <span style={{ color: colors.accent, fontSize: '24px', fontWeight: '700' }}>
+            <span style={{ color: TIMESHEET_RED, fontSize: '24px', fontWeight: '700' }}>
               {thisWeekTotal.toFixed(1)} hrs
             </span>
           </div>
         </div>
 
-        {/* Add Time Log Button */}
+        {/* Add Time Log Button (✅ now red) */}
         <button
           onClick={() => setShowForm(true)}
           style={{
             width: '100%',
             padding: '16px',
-            backgroundColor: colors.accent,
+            backgroundColor: TIMESHEET_RED,
             border: 'none',
             borderRadius: '12px',
             color: '#FFFFFF',
@@ -1031,22 +957,15 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
         </button>
 
         {/* Time Logs List */}
-        <h3 style={{
-          color: colors.text,
-          fontSize: '16px',
-          fontWeight: '700',
-          marginBottom: '12px'
-        }}>
-          My Time Logs
-        </h3>
+        <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: '700', marginBottom: '12px' }}>My Time Logs</h3>
 
         {groupedLogs.map(([date, logs]) => {
           const isExpanded = expandedDates.includes(date);
           const dayTotal = logs.reduce((total, log) => {
             const match = log.totalHours.match(/(\d+)\s*hr/);
             const minMatch = log.totalHours.match(/(\d+)\s*min/);
-            let hours = match ? parseInt(match[1]) : 0;
-            let mins = minMatch ? parseInt(minMatch[1]) : 0;
+            const hours = match ? parseInt(match[1]) : 0;
+            const mins = minMatch ? parseInt(minMatch[1]) : 0;
             return total + hours + mins / 60;
           }, 0);
 
@@ -1068,26 +987,25 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Calendar size={18} color={colors.accent} />
-                  <span style={{ color: colors.text, fontWeight: '600', fontSize: '14px' }}>
-                    {formatDate(date)}
-                  </span>
-                  <span style={{
-                    backgroundColor: colors.backgroundTertiary,
-                    padding: '2px 8px',
-                    borderRadius: '10px',
-                    fontSize: '12px',
-                    color: colors.textSecondary
-                  }}>
+                  <Calendar size={18} color={TIMESHEET_RED} />
+                  <span style={{ color: colors.text, fontWeight: '600', fontSize: '14px' }}>{formatDate(date)}</span>
+                  <span
+                    style={{
+                      backgroundColor: colors.backgroundTertiary,
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      fontSize: '12px',
+                      color: colors.textSecondary
+                    }}
+                  >
                     {logs.length} {logs.length === 1 ? 'entry' : 'entries'}
                   </span>
                 </div>
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ color: colors.accent, fontWeight: '700', fontSize: '14px' }}>
-                    {dayTotal.toFixed(1)} hrs
-                  </span>
-                  <ChevronDown 
-                    size={18} 
+                  <span style={{ color: TIMESHEET_RED, fontWeight: '700', fontSize: '14px' }}>{dayTotal.toFixed(1)} hrs</span>
+                  <ChevronDown
+                    size={18}
                     color={colors.textSecondary}
                     style={{
                       transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -1099,13 +1017,15 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
 
               {/* Log Entries */}
               {isExpanded && (
-                <div style={{
-                  backgroundColor: colors.backgroundSecondary,
-                  borderRadius: '0 0 12px 12px',
-                  border: `1px solid ${colors.border}`,
-                  borderTop: 'none',
-                  overflow: 'hidden'
-                }}>
+                <div
+                  style={{
+                    backgroundColor: colors.backgroundSecondary,
+                    borderRadius: '0 0 12px 12px',
+                    border: `1px solid ${colors.border}`,
+                    borderTop: 'none',
+                    overflow: 'hidden'
+                  }}
+                >
                   {logs.map((log, idx) => (
                     <div
                       key={log.id}
@@ -1115,103 +1035,66 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
                       }}
                     >
                       {/* Log Header */}
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        marginBottom: '8px'
-                      }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          marginBottom: '8px'
+                        }}
+                      >
                         <div style={{ flex: 1 }}>
-                          <p style={{
-                            color: colors.text,
-                            fontWeight: '600',
-                            fontSize: '14px',
-                            margin: '0 0 4px 0'
-                          }}>
+                          <p style={{ color: colors.text, fontWeight: '600', fontSize: '14px', margin: '0 0 4px 0' }}>
                             {log.logType === 'Project Logs' ? log.jobName : log.taskName}
                           </p>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span style={{
-                              backgroundColor: colors.backgroundTertiary,
-                              padding: '2px 8px',
-                              borderRadius: '6px',
-                              fontSize: '11px',
-                              color: colors.textSecondary
-                            }}>
+                            <span
+                              style={{
+                                backgroundColor: colors.backgroundTertiary,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                color: colors.textSecondary
+                              }}
+                            >
                               {log.typeOfWork}
                             </span>
-                            <StatusBadge status={log.approval} colors={colors} />
+                            <StatusBadge status={log.approval} />
                           </div>
                         </div>
-                        <span style={{
-                          color: colors.accent,
-                          fontWeight: '700',
-                          fontSize: '15px'
-                        }}>
-                          {log.totalHours}
-                        </span>
+                        <span style={{ color: TIMESHEET_RED, fontWeight: '700', fontSize: '15px' }}>{log.totalHours}</span>
                       </div>
 
                       {/* Time Details */}
-                      <div style={{
-                        display: 'flex',
-                        gap: '16px',
-                        color: colors.textSecondary,
-                        fontSize: '13px',
-                        marginBottom: '8px'
-                      }}>
-                        <span>{log.startTime} - {log.endTime}</span>
-                        {log.breakTime !== '0 min' && (
-                          <span>Break: {log.breakTime}</span>
-                        )}
+                      <div style={{ display: 'flex', gap: '16px', color: colors.textSecondary, fontSize: '13px', marginBottom: '8px' }}>
+                        <span>
+                          {log.startTime} - {log.endTime}
+                        </span>
+                        {log.breakTime !== '0 min' && <span>Break: {log.breakTime}</span>}
                       </div>
 
                       {/* Note */}
                       {log.note && (
-                        <p style={{
-                          color: colors.textSecondary,
-                          fontSize: '13px',
-                          margin: '0 0 8px 0',
-                          fontStyle: 'italic'
-                        }}>
+                        <p style={{ color: colors.textSecondary, fontSize: '13px', margin: '0 0 8px 0', fontStyle: 'italic' }}>
                           "{log.note}"
                         </p>
                       )}
 
                       {/* Rejection Reason */}
                       {log.approval === 'Rejected' && log.rejectionReason && (
-                        <div style={{
-                          backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                          padding: '10px 12px',
-                          borderRadius: '8px',
-                          marginBottom: '8px',
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '8px'
-                        }}>
-                          <AlertCircle size={16} color="#E74C3C" style={{ flexShrink: 0, marginTop: '2px' }} />
-                          <p style={{ color: '#E74C3C', fontSize: '12px', margin: 0 }}>
-                            {log.rejectionReason}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Images */}
-                      {log.images.length > 0 && (
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                          {log.images.map((img, imgIdx) => (
-                            <img
-                              key={imgIdx}
-                              src={img}
-                              alt=""
-                              style={{
-                                width: '50px',
-                                height: '50px',
-                                borderRadius: '8px',
-                                objectFit: 'cover'
-                              }}
-                            />
-                          ))}
+                        <div
+                          style={{
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            padding: '10px 12px',
+                            borderRadius: '8px',
+                            marginBottom: '8px',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '8px'
+                          }}
+                        >
+                          <AlertCircle size={16} color={TIMESHEET_RED} style={{ flexShrink: 0, marginTop: '2px' }} />
+                          <p style={{ color: TIMESHEET_RED, fontSize: '12px', margin: 0 }}>{log.rejectionReason}</p>
                         </div>
                       )}
 
@@ -1242,6 +1125,7 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
                             <Edit3 size={14} />
                             Edit
                           </button>
+
                           <button
                             onClick={() => handleDeleteLog(log.id)}
                             style={{
@@ -1255,7 +1139,7 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
                               alignItems: 'center',
                               justifyContent: 'center',
                               gap: '6px',
-                              color: '#E74C3C',
+                              color: TIMESHEET_RED,
                               fontSize: '13px',
                               fontWeight: '600'
                             }}
@@ -1274,16 +1158,10 @@ export function TimeEntryScreen({ onBack }: TimeEntryScreenProps) {
         })}
 
         {timeLogs.length === 0 && (
-          <div style={{
-            textAlign: 'center',
-            padding: '40px 20px',
-            color: colors.textSecondary
-          }}>
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: colors.textSecondary }}>
             <Clock size={48} color={colors.textTertiary} style={{ marginBottom: '12px' }} />
             <p style={{ margin: 0 }}>No time logs yet</p>
-            <p style={{ margin: '4px 0 0 0', fontSize: '14px' }}>
-              Tap "Add Time Log" to get started
-            </p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '14px' }}>Tap "Add Time Log" to get started</p>
           </div>
         )}
       </div>

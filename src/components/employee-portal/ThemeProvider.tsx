@@ -1,112 +1,44 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Sun, Moon } from 'lucide-react';
 
 type Theme = 'light' | 'dark' | 'system';
-type ResolvedTheme = 'light' | 'dark';
-
-interface ThemeContextType {
-  theme: Theme;
-  resolvedTheme: ResolvedTheme;
-  setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
-  colors: ThemeColors;
-  employeeColor: string;
-  setEmployeeColor: (color: string) => void;
-}
 
 interface ThemeColors {
   background: string;
   backgroundSecondary: string;
-  backgroundTertiary: string;
-  backgroundElevated: string;
   text: string;
   textSecondary: string;
-  textTertiary: string;
-  textInverse: string;
   border: string;
-  borderLight: string;
   accent: string;
-  accentHover: string;
-  accentLight: string;
-  success: string;
-  successLight: string;
-  warning: string;
-  warningLight: string;
-  error: string;
-  errorLight: string;
-  overlay: string;
-  shadow: string;
-  phaseBefore: string;
-  phaseDemo: string;
-  phasePrep: string;
-  phaseInstall: string;
-  phaseSand: string;
-  phaseStain: string;
-  phaseFinish: string;
-  phaseAfter: string;
+  accentSecondary: string;
+}
+
+interface ThemeContextType {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  isDark: boolean;
+  colors: ThemeColors;
+  employeeColor: string;
 }
 
 const lightColors: ThemeColors = {
-  background: '#FFFFFF',
-  backgroundSecondary: '#F5F5F7',
-  backgroundTertiary: '#E8E8ED',
-  backgroundElevated: '#FFFFFF',
+  background: '#F5F5F5',
+  backgroundSecondary: '#FFFFFF',
   text: '#1A1A1A',
-  textSecondary: '#666666',
-  textTertiary: '#999999',
-  textInverse: '#FFFFFF',
-  border: '#E0E0E0',
-  borderLight: '#F0F0F0',
-  accent: '#0F7BFF',
-  accentHover: '#0A5FCC',
-  accentLight: 'rgba(15, 123, 255, 0.1)',
-  success: '#34C759',
-  successLight: 'rgba(52, 199, 89, 0.1)',
-  warning: '#FF9500',
-  warningLight: 'rgba(255, 149, 0, 0.1)',
-  error: '#FF3B30',
-  errorLight: 'rgba(255, 59, 48, 0.1)',
-  overlay: 'rgba(0, 0, 0, 0.5)',
-  shadow: 'rgba(0, 0, 0, 0.1)',
-  phaseBefore: '#F4B400',
-  phaseDemo: '#E74C3C',
-  phasePrep: '#9B59B6',
-  phaseInstall: '#3498DB',
-  phaseSand: '#95A5A6',
-  phaseStain: '#8B4513',
-  phaseFinish: '#27AE60',
-  phaseAfter: '#4CAF50',
+  textSecondary: '#6B7280',
+  border: '#E5E7EB',
+  accent: '#4F6A41',
+  accentSecondary: '#3B82F6',
 };
 
 const darkColors: ThemeColors = {
-  background: '#0A0A0A',
-  backgroundSecondary: '#1A1A1A',
-  backgroundTertiary: '#2A2A2A',
-  backgroundElevated: '#1F1F1F',
+  background: '#121212',
+  backgroundSecondary: '#1F1F1F',
   text: '#FFFFFF',
-  textSecondary: '#A0A0A0',
-  textTertiary: '#666666',
-  textInverse: '#000000',
+  textSecondary: '#9CA3AF',
   border: '#2A2A2A',
-  borderLight: '#3D3D3D',
-  accent: '#0F7BFF',
-  accentHover: '#3D9AFF',
-  accentLight: 'rgba(15, 123, 255, 0.2)',
-  success: '#7BAA8E',
-  successLight: 'rgba(123, 170, 142, 0.2)',
-  warning: '#D4A024',
-  warningLight: 'rgba(212, 160, 36, 0.2)',
-  error: '#E74C3C',
-  errorLight: 'rgba(231, 76, 60, 0.2)',
-  overlay: 'rgba(0, 0, 0, 0.8)',
-  shadow: 'rgba(0, 0, 0, 0.4)',
-  phaseBefore: '#F4B400',
-  phaseDemo: '#E74C3C',
-  phasePrep: '#9B59B6',
-  phaseInstall: '#3498DB',
-  phaseSand: '#95A5A6',
-  phaseStain: '#8B4513',
-  phaseFinish: '#27AE60',
-  phaseAfter: '#4CAF50',
+  accent: '#4F6A41',
+  accentSecondary: '#60A5FA',
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -114,106 +46,30 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 interface ThemeProviderProps {
   children: ReactNode;
   defaultTheme?: Theme;
-  storageKey?: string;
 }
 
-export function ThemeProvider({ 
-  children, 
-  defaultTheme = 'system',
-  storageKey = 'boardroom360-theme'
-}: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(storageKey);
-      if (stored === 'light' || stored === 'dark' || stored === 'system') {
-        return stored;
-      }
-    }
-    return defaultTheme;
-  });
-
-  // Employee color from settings
-  const [employeeColor, setEmployeeColorState] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('boardroom360-employee-color');
-      if (stored) return stored;
-    }
-    return '#D4A024'; // Default gold
-  });
-
-  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    return 'dark';
-  });
+export function ThemeProvider({ children, defaultTheme = 'dark' }: ThemeProviderProps) {
+  const [theme, setTheme] = useState<Theme>(defaultTheme);
+  const [isDark, setIsDark] = useState(defaultTheme === 'dark');
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      setSystemTheme(e.matches ? 'dark' : 'light');
-    };
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      setIsDark(mediaQuery.matches);
+      
+      const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    } else {
+      setIsDark(theme === 'dark');
+    }
+  }, [theme]);
 
-  // Fetch employee color from backend
-  useEffect(() => {
-    const fetchEmployeeColor = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-        
-        const response = await fetch('http://35.92.33.215:3001/employee/me', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.color) {
-            setEmployeeColorState(data.color);
-            localStorage.setItem('boardroom360-employee-color', data.color);
-          }
-        }
-      } catch (error) {
-        console.log('Using default employee color');
-      }
-    };
-    fetchEmployeeColor();
-  }, []);
-
-  const resolvedTheme: ResolvedTheme = theme === 'system' ? systemTheme : theme;
-  const colors = resolvedTheme === 'dark' ? darkColors : lightColors;
-
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem(storageKey, newTheme);
-  };
-
-  const setEmployeeColor = (newColor: string) => {
-    setEmployeeColorState(newColor);
-    localStorage.setItem('boardroom360-employee-color', newColor);
-  };
-
-  const toggleTheme = () => {
-    const newTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-  };
-
-  useEffect(() => {
-    const root = document.documentElement;
-    Object.entries(colors).forEach(([key, value]) => {
-      const cssVar = `--color-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
-      root.style.setProperty(cssVar, value);
-    });
-    root.style.setProperty('--employee-color', employeeColor);
-    root.setAttribute('data-theme', resolvedTheme);
-  }, [colors, resolvedTheme, employeeColor]);
+  const colors = isDark ? darkColors : lightColors;
+  const employeeColor = '#4F6A41'; // Green accent for employee portal
 
   return (
-    <ThemeContext.Provider value={{ 
-      theme, resolvedTheme, setTheme, toggleTheme, colors, employeeColor, setEmployeeColor 
-    }}>
+    <ThemeContext.Provider value={{ theme, setTheme, isDark, colors, employeeColor }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -221,48 +77,47 @@ export function ThemeProvider({
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+  if (context === undefined) {
+    // Return default dark theme if used outside provider
+    return {
+      theme: 'dark' as Theme,
+      setTheme: () => {},
+      isDark: true,
+      colors: darkColors,
+      employeeColor: '#4F6A41'
+    };
   }
   return context;
 }
 
 export function ThemeToggleButton() {
-  const { resolvedTheme, toggleTheme, colors } = useTheme();
-  
+  const { isDark, setTheme } = useTheme();
+
   return (
     <button
-      onClick={toggleTheme}
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
       style={{
         width: '44px',
         height: '44px',
         borderRadius: '12px',
-        border: `1px solid ${colors.border}`,
-        backgroundColor: colors.backgroundSecondary,
-        color: colors.text,
+        backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF',
+        border: `1px solid ${isDark ? '#3A3A3A' : '#E5E7EB'}`,
+        cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        cursor: 'pointer',
-        transition: 'all 0.2s'
+        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+        transition: 'all 0.2s ease'
       }}
-      title={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
+      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      {resolvedTheme === 'dark' ? (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-        </svg>
+      {isDark ? (
+        <Sun size={20} color="#FCD34D" />
       ) : (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
+        <Moon size={20} color="#6B7280" />
       )}
     </button>
   );
 }
 
-export { lightColors, darkColors };
-export type { ThemeColors, Theme, ResolvedTheme };
+export default ThemeProvider;

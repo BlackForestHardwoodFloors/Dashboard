@@ -93,7 +93,7 @@ export function JobsScreen({
       label: 'P4P & Growth', 
       icon: DollarSign, 
       secondIcon: TrendingUp,
-      bgColor: '#D4A024',
+      bgColor: '#2E7D32',  // Changed from #D4A024 to match sidebar green
       onClick: onOpenP4P
     },
     { 

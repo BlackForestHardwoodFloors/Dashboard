@@ -1,5 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Plus, Trash2, Send, Save, ChevronRight, Calendar, Check, Clock, FileText, PenTool } from 'lucide-react';
+import {
+  X,
+  Plus,
+  Trash2,
+  Send,
+  Save,
+  ChevronRight,
+  Calendar,
+  Check,
+  FileText,
+  PenTool,
+  MessageSquare,
+  Mail,
+  Monitor,
+} from 'lucide-react';
 import { useTheme } from '../ThemeProvider';
 
 interface ChangeOrderItem {
@@ -43,7 +57,7 @@ const mockChangeOrders: ChangeOrder[] = [
     status: 'signed',
     notes: 'Customer requested additional room',
     signature: 'Linda Muir',
-    signedDate: '2024-11-18'
+    signedDate: '2024-11-18',
   },
   {
     id: 'co-2',
@@ -70,25 +84,36 @@ export function ChangeOrderModal({
 }: ChangeOrderModalProps) {
   const { colors } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
   const [isDrawing, setIsDrawing] = useState(false);
-  
+
   // View state: 'list' shows all change orders, 'edit' shows form
   const [view, setView] = useState<'list' | 'edit'>('list');
   const [editingOrder, setEditingOrder] = useState<ChangeOrder | null>(null);
-  
+
   // Existing change orders
   const [changeOrders, setChangeOrders] = useState<ChangeOrder[]>(mockChangeOrders);
-  
+
   // Form state for new/editing order
   const [changeOrderDate, setChangeOrderDate] = useState(new Date().toISOString().split('T')[0]);
-  const [items, setItems] = useState<ChangeOrderItem[]>([
-    { id: '1', description: '', amount: 0 }
-  ]);
+  const [items, setItems] = useState<ChangeOrderItem[]>([{ id: '1', description: '', amount: 0 }]);
   const [notes, setNotes] = useState('');
   const [hasSignature, setHasSignature] = useState(false);
   const [signatureMethod, setSignatureMethod] = useState<'draw' | 'type'>('draw');
   const [typedSignature, setTypedSignature] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // ✅ send method checkboxes (Text / Email / Portal)
+  const [sendVia, setSendVia] = useState({
+    text: true,
+    email: false,
+    portal: true,
+  });
+
+  const hasAnySendVia = sendVia.text || sendVia.email || sendVia.portal;
+
+  // ✅ TAN accent used by Change Order module
+  const TAN_ACCENT = '#6B5D4F';
 
   useEffect(() => {
     if (view === 'edit' && canvasRef.current && signatureMethod === 'draw') {
@@ -121,14 +146,12 @@ export function ChangeOrderModal({
 
   const removeItem = (id: string) => {
     if (items.length > 1) {
-      setItems(items.filter(item => item.id !== id));
+      setItems(items.filter((item) => item.id !== id));
     }
   };
 
   const updateItem = (id: string, field: 'description' | 'amount', value: string | number) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+    setItems(items.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
   };
 
   const totalBeforeTax = items.reduce((sum, item) => sum + (item.amount || 0), 0);
@@ -142,6 +165,10 @@ export function ChangeOrderModal({
     setSignatureMethod('draw');
     setTypedSignature('');
     setAgreedToTerms(false);
+
+    // ✅ reset send methods to defaults
+    setSendVia({ text: true, email: false, portal: true });
+
     setView('edit');
   };
 
@@ -154,6 +181,10 @@ export function ChangeOrderModal({
     setSignatureMethod('draw');
     setTypedSignature(order.signature || '');
     setAgreedToTerms(!!order.signature);
+
+    // ✅ for now, default when opening an existing change order
+    setSendVia({ text: true, email: false, portal: true });
+
     setView('edit');
   };
 
@@ -164,11 +195,11 @@ export function ChangeOrderModal({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
+
     const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-    
+    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
+    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+
     ctx.beginPath();
     ctx.moveTo(x, y);
   };
@@ -179,11 +210,11 @@ export function ChangeOrderModal({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
+
     const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-    
+    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
+    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+
     ctx.lineTo(x, y);
     ctx.stroke();
     setHasSignature(true);
@@ -226,7 +257,7 @@ export function ChangeOrderModal({
   const handleSubmit = () => {
     const signed = isSignatureComplete() && agreedToTerms;
     const signatureName = signatureMethod === 'type' ? typedSignature : clientName;
-    
+
     const newOrder: ChangeOrder = {
       id: editingOrder?.id || `co-${Date.now()}`,
       changeOrderDate,
@@ -237,45 +268,135 @@ export function ChangeOrderModal({
       signature: signed ? signatureName : undefined,
       signedDate: signed ? new Date().toISOString().split('T')[0] : undefined,
     };
-    
+
     if (editingOrder) {
-      setChangeOrders(changeOrders.map(co => co.id === editingOrder.id ? newOrder : co));
+      setChangeOrders(changeOrders.map((co) => (co.id === editingOrder.id ? newOrder : co)));
     } else {
       setChangeOrders([...changeOrders, newOrder]);
     }
-    
+
     console.log('Change Order Saved:', newOrder);
     setView('list');
   };
 
   const handleSendToClient = () => {
-    console.log('Sending to client for signature...');
+    if (!hasAnySendVia) {
+      alert('Please choose how to send this: Text, Email, and/or Portal.');
+      return;
+    }
+
+    console.log('Sending to client for signature via:', sendVia);
     handleSubmit();
   };
 
   const getStatusColor = (status: ChangeOrder['status']) => {
     switch (status) {
-      case 'draft': return '#666';
-      case 'pending': return '#FBBF24';
-      case 'signed': return '#4F6A41';
-      case 'approved': return '#22C55E';
-      default: return '#666';
+      case 'draft':
+        return '#666';
+      case 'pending':
+        return '#FBBF24';
+      case 'signed':
+        return '#4F6A41';
+      case 'approved':
+        return '#22C55E';
+      default:
+        return '#666';
     }
   };
 
   const getStatusLabel = (status: ChangeOrder['status']) => {
     switch (status) {
-      case 'draft': return 'Draft';
-      case 'pending': return 'Awaiting Signature';
-      case 'signed': return 'Signed';
-      case 'approved': return 'Approved';
-      default: return status;
+      case 'draft':
+        return 'Draft';
+      case 'pending':
+        return 'Awaiting Signature';
+      case 'signed':
+        return 'Signed';
+      case 'approved':
+        return 'Approved';
+      default:
+        return status;
     }
   };
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr + 'T00:00:00');
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
+  // ✅ Card style send option (matches Stain Sign Off look, but TAN)
+  const SendOptionCard = ({
+    checked,
+    onToggle,
+    title,
+    subtitle,
+    Icon,
+  }: {
+    checked: boolean;
+    onToggle: () => void;
+    title: string;
+    subtitle: string;
+    Icon: any;
+  }) => {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          width: '100%',
+          borderRadius: 12,
+          border: `1px solid ${checked ? TAN_ACCENT : colors.border}`,
+          backgroundColor: checked ? 'rgba(107, 93, 79, 0.12)' : colors.backgroundSecondary,
+          color: colors.text,
+          padding: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          cursor: 'pointer',
+          textAlign: 'left',
+          boxShadow: checked ? `0 0 0 1px ${TAN_ACCENT} inset` : 'none',
+        }}
+      >
+        {/* Checkbox square */}
+        <div
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 6,
+            border: `2px solid ${checked ? TAN_ACCENT : colors.border}`,
+            backgroundColor: checked ? TAN_ACCENT : 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: '0 0 auto',
+          }}
+        >
+          {checked && <Check size={16} color="#fff" />}
+        </div>
+
+        {/* Icon tile */}
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            backgroundColor: checked ? TAN_ACCENT : colors.background,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: '0 0 auto',
+          }}
+        >
+          <Icon size={20} color={checked ? '#fff' : colors.text} />
+        </div>
+
+        {/* Text */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.1 }}>{title}</div>
+          <div style={{ fontSize: 13, color: colors.textSecondary, opacity: 0.95 }}>{subtitle}</div>
+        </div>
+      </button>
+    );
   };
 
   return (
@@ -307,14 +428,16 @@ export function ChangeOrderModal({
         }}
       >
         {/* Header */}
-        <div style={{
-          padding: '20px',
-          borderBottom: `1px solid ${colors.border}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          backgroundColor: '#6B5D4F',
-        }}>
+        <div
+          style={{
+            padding: '20px',
+            borderBottom: `1px solid ${colors.border}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: '#6B5D4F',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {view === 'edit' && (
               <button
@@ -334,7 +457,7 @@ export function ChangeOrderModal({
             )}
             <div>
               <h2 style={{ color: '#fff', fontSize: '20px', fontWeight: '700', margin: 0 }}>
-                {view === 'list' ? 'Change Orders' : (editingOrder ? 'Edit Change Order' : 'New Change Order')}
+                {view === 'list' ? 'Change Orders' : editingOrder ? 'Edit Change Order' : 'New Change Order'}
               </h2>
               <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', margin: '4px 0 0 0' }}>
                 {jobName} • {clientName}
@@ -364,17 +487,19 @@ export function ChangeOrderModal({
           <>
             <div style={{ flex: 1, overflow: 'auto', padding: '20px' }}>
               {/* Job Info Summary */}
-              <div style={{
-                backgroundColor: colors.background,
-                borderRadius: '12px',
-                padding: '14px',
-                marginBottom: '16px',
-              }}>
-                <p style={{ color: colors.textSecondary, fontSize: '12px', margin: 0 }}>
-                  {address}
-                </p>
+              <div
+                style={{
+                  backgroundColor: colors.background,
+                  borderRadius: '12px',
+                  padding: '14px',
+                  marginBottom: '16px',
+                }}
+              >
+                <p style={{ color: colors.textSecondary, fontSize: '12px', margin: 0 }}>{address}</p>
                 <p style={{ color: colors.textSecondary, fontSize: '12px', margin: '2px 0 0 0' }}>
-                  {city}{city && state ? ', ' : ''}{state} {zip}
+                  {city}
+                  {city && state ? ', ' : ''}
+                  {state} {zip}
                 </p>
               </div>
 
@@ -382,9 +507,7 @@ export function ChangeOrderModal({
               {changeOrders.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 20px' }}>
                   <FileText size={48} color={colors.textSecondary} style={{ opacity: 0.5, marginBottom: '16px' }} />
-                  <p style={{ color: colors.textSecondary, fontSize: '15px', margin: 0 }}>
-                    No change orders yet
-                  </p>
+                  <p style={{ color: colors.textSecondary, fontSize: '15px', margin: 0 }}>No change orders yet</p>
                   <p style={{ color: colors.textSecondary, fontSize: '13px', margin: '8px 0 0 0', opacity: 0.7 }}>
                     Create one to track additional work requests
                   </p>
@@ -404,20 +527,29 @@ export function ChangeOrderModal({
                         transition: 'border-color 0.2s',
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          marginBottom: '10px',
+                        }}
+                      >
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                             <span style={{ color: colors.text, fontSize: '15px', fontWeight: '600' }}>
                               Change Order #{index + 1}
                             </span>
-                            <span style={{
-                              backgroundColor: getStatusColor(order.status),
-                              color: '#fff',
-                              padding: '2px 8px',
-                              borderRadius: '10px',
-                              fontSize: '11px',
-                              fontWeight: '600',
-                            }}>
+                            <span
+                              style={{
+                                backgroundColor: getStatusColor(order.status),
+                                color: '#fff',
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                              }}
+                            >
                               {getStatusLabel(order.status)}
                             </span>
                           </div>
@@ -434,17 +566,20 @@ export function ChangeOrderModal({
                           </span>
                         </div>
                       </div>
-                      
+
                       <div style={{ borderTop: `1px solid ${colors.border}`, paddingTop: '10px' }}>
                         {order.items.slice(0, 2).map((item, i) => (
-                          <p key={i} style={{ 
-                            color: colors.textSecondary, 
-                            fontSize: '13px', 
-                            margin: i === 0 ? 0 : '4px 0 0 0',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}>
+                          <p
+                            key={i}
+                            style={{
+                              color: colors.textSecondary,
+                              fontSize: '13px',
+                              margin: i === 0 ? 0 : '4px 0 0 0',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
                             • {item.description || 'No description'}
                           </p>
                         ))}
@@ -456,14 +591,16 @@ export function ChangeOrderModal({
                       </div>
 
                       {order.signature && (
-                        <div style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: '6px', 
-                          marginTop: '10px',
-                          paddingTop: '10px',
-                          borderTop: `1px solid ${colors.border}`,
-                        }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            marginTop: '10px',
+                            paddingTop: '10px',
+                            borderTop: `1px solid ${colors.border}`,
+                          }}
+                        >
                           <Check size={14} color="#4F6A41" />
                           <span style={{ color: '#4F6A41', fontSize: '12px' }}>
                             Signed by {order.signature} on {formatDate(order.signedDate!)}
@@ -481,10 +618,12 @@ export function ChangeOrderModal({
             </div>
 
             {/* New Change Order Button */}
-            <div style={{
-              padding: '16px 20px',
-              borderTop: `1px solid ${colors.border}`,
-            }}>
+            <div
+              style={{
+                padding: '16px 20px',
+                borderTop: `1px solid ${colors.border}`,
+              }}
+            >
               <button
                 onClick={startNewOrder}
                 style={{
@@ -516,14 +655,16 @@ export function ChangeOrderModal({
             <div style={{ flex: 1, overflow: 'auto', padding: '20px' }}>
               {/* Change Order Date */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  color: colors.textSecondary, 
-                  fontSize: '11px', 
-                  fontWeight: '600', 
-                  textTransform: 'uppercase',
-                  display: 'block',
-                  marginBottom: '8px'
-                }}>
+                <label
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    display: 'block',
+                    marginBottom: '8px',
+                  }}
+                >
                   Change Order Date
                 </label>
                 <input
@@ -543,15 +684,17 @@ export function ChangeOrderModal({
               </div>
 
               {/* Client Info Section */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '12px',
-                marginBottom: '20px',
-                backgroundColor: colors.background,
-                borderRadius: '12px',
-                padding: '14px',
-              }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '12px',
+                  marginBottom: '20px',
+                  backgroundColor: colors.background,
+                  borderRadius: '12px',
+                  padding: '14px',
+                }}
+              >
                 <div>
                   <label style={{ color: colors.textSecondary, fontSize: '11px', fontWeight: '600', textTransform: 'uppercase' }}>
                     Submitted To
@@ -572,23 +715,28 @@ export function ChangeOrderModal({
 
               {/* Change Order Items */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  color: colors.text, 
-                  fontSize: '14px', 
-                  fontWeight: '700', 
-                  display: 'block',
-                  marginBottom: '12px'
-                }}>
+                <label
+                  style={{
+                    color: colors.text,
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    display: 'block',
+                    marginBottom: '12px',
+                  }}
+                >
                   Work to add or change:
                 </label>
-                
-                {items.map((item, index) => (
-                  <div key={item.id} style={{
-                    display: 'flex',
-                    gap: '10px',
-                    marginBottom: '10px',
-                    alignItems: 'flex-start',
-                  }}>
+
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      display: 'flex',
+                      gap: '10px',
+                      marginBottom: '10px',
+                      alignItems: 'flex-start',
+                    }}
+                  >
                     <div style={{ flex: 1 }}>
                       <textarea
                         value={item.description}
@@ -609,14 +757,18 @@ export function ChangeOrderModal({
                     </div>
                     <div style={{ width: '100px' }}>
                       <div style={{ position: 'relative' }}>
-                        <span style={{
-                          position: 'absolute',
-                          left: '12px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          color: colors.textSecondary,
-                          fontSize: '14px',
-                        }}>$</span>
+                        <span
+                          style={{
+                            position: 'absolute',
+                            left: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            color: colors.textSecondary,
+                            fontSize: '14px',
+                          }}
+                        >
+                          $
+                        </span>
                         <input
                           type="number"
                           value={item.amount || ''}
@@ -656,6 +808,7 @@ export function ChangeOrderModal({
                   </div>
                 ))}
 
+                {/* ✅ KEEP THIS ONE (below entries) */}
                 <button
                   onClick={addItem}
                   style={{
@@ -679,36 +832,32 @@ export function ChangeOrderModal({
               </div>
 
               {/* Total */}
-              <div style={{
-                backgroundColor: '#6B5D4F',
-                borderRadius: '12px',
-                padding: '16px',
-                marginBottom: '20px',
-              }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}>
-                  <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', fontWeight: '600' }}>
-                    Total before tax:
-                  </span>
-                  <span style={{ color: '#fff', fontSize: '24px', fontWeight: '700' }}>
-                    ${totalBeforeTax.toFixed(2)}
-                  </span>
+              <div
+                style={{
+                  backgroundColor: '#6B5D4F',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginBottom: '20px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', fontWeight: '600' }}>Total before tax:</span>
+                  <span style={{ color: '#fff', fontSize: '24px', fontWeight: '700' }}>${totalBeforeTax.toFixed(2)}</span>
                 </div>
               </div>
 
               {/* Notes */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  color: colors.textSecondary, 
-                  fontSize: '11px', 
-                  fontWeight: '600', 
-                  textTransform: 'uppercase',
-                  display: 'block',
-                  marginBottom: '8px'
-                }}>
+                <label
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    display: 'block',
+                    marginBottom: '8px',
+                  }}
+                >
                   Notes
                 </label>
                 <textarea
@@ -730,37 +879,41 @@ export function ChangeOrderModal({
               </div>
 
               {/* Signature Section - Adobe Sign Style */}
-              <div style={{ 
-                marginBottom: '20px',
-                backgroundColor: '#F7F9FC',
-                borderRadius: '12px',
-                padding: '20px',
-                border: '1px solid #E1E5EB',
-              }}>
+              <div
+                style={{
+                  marginBottom: '20px',
+                  backgroundColor: '#F7F9FC',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  border: '1px solid #E1E5EB',
+                }}
+              >
                 {/* Header with icon */}
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '10px',
-                  marginBottom: '16px',
-                  paddingBottom: '12px',
-                  borderBottom: '1px solid #E1E5EB',
-                }}>
-                  <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    backgroundColor: '#0066CC',
+                <div
+                  style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
+                    gap: '10px',
+                    marginBottom: '16px',
+                    paddingBottom: '12px',
+                    borderBottom: '1px solid #E1E5EB',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      backgroundColor: '#0066CC',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
                     <PenTool size={18} color="#fff" />
                   </div>
                   <div>
-                    <h4 style={{ color: '#1A1A1A', fontSize: '16px', fontWeight: '700', margin: 0 }}>
-                      Sign Document
-                    </h4>
+                    <h4 style={{ color: '#1A1A1A', fontSize: '16px', fontWeight: '700', margin: 0 }}>Sign Document</h4>
                     <p style={{ color: '#666', fontSize: '12px', margin: '2px 0 0 0' }}>
                       Please sign below to accept this change order
                     </p>
@@ -768,11 +921,7 @@ export function ChangeOrderModal({
                 </div>
 
                 {/* Signature Method Tabs */}
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  marginBottom: '16px',
-                }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
                   <button
                     onClick={() => setSignatureMethod('draw')}
                     style={{
@@ -819,27 +968,31 @@ export function ChangeOrderModal({
                 {/* Draw Signature */}
                 {signatureMethod === 'draw' && (
                   <div style={{ position: 'relative' }}>
-                    <div style={{
-                      border: '2px solid #D1D5DB',
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      backgroundColor: '#FFFFFF',
-                      position: 'relative',
-                    }}>
+                    <div
+                      style={{
+                        border: '2px solid #D1D5DB',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        backgroundColor: '#FFFFFF',
+                        position: 'relative',
+                      }}
+                    >
                       {/* Sign Here indicator */}
                       {!hasSignature && (
-                        <div style={{
-                          position: 'absolute',
-                          left: '20px',
-                          bottom: '35px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          color: '#9CA3AF',
-                          fontSize: '14px',
-                          pointerEvents: 'none',
-                          zIndex: 1,
-                        }}>
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: '20px',
+                            bottom: '35px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            color: '#9CA3AF',
+                            fontSize: '14px',
+                            pointerEvents: 'none',
+                            zIndex: 1,
+                          }}
+                        >
                           <span style={{ fontSize: '20px', color: '#0066CC' }}>✕</span>
                           <span>Sign here</span>
                         </div>
@@ -909,45 +1062,49 @@ export function ChangeOrderModal({
                       }}
                     />
                     {typedSignature && (
-                      <div style={{
-                        padding: '20px',
-                        backgroundColor: '#fff',
-                        border: '2px solid #D1D5DB',
-                        borderRadius: '8px',
-                        textAlign: 'center',
-                      }}>
-                        <p style={{ 
-                          color: '#1A1A1A', 
-                          fontSize: '28px', 
-                          fontFamily: "'Brush Script MT', 'Dancing Script', cursive",
-                          fontStyle: 'italic',
-                          margin: 0,
-                          borderBottom: '1px solid #9CA3AF',
-                          paddingBottom: '8px',
-                          display: 'inline-block',
-                        }}>
+                      <div
+                        style={{
+                          padding: '20px',
+                          backgroundColor: '#fff',
+                          border: '2px solid #D1D5DB',
+                          borderRadius: '8px',
+                          textAlign: 'center',
+                        }}
+                      >
+                        <p
+                          style={{
+                            color: '#1A1A1A',
+                            fontSize: '28px',
+                            fontFamily: "'Brush Script MT', 'Dancing Script', cursive",
+                            fontStyle: 'italic',
+                            margin: 0,
+                            borderBottom: '1px solid #9CA3AF',
+                            paddingBottom: '8px',
+                            display: 'inline-block',
+                          }}
+                        >
                           {typedSignature}
                         </p>
-                        <p style={{ color: '#6B7280', fontSize: '11px', margin: '8px 0 0 0' }}>
-                          Signature preview
-                        </p>
+                        <p style={{ color: '#6B7280', fontSize: '11px', margin: '8px 0 0 0' }}>Signature preview</p>
                       </div>
                     )}
                   </div>
                 )}
 
                 {/* Agreement Checkbox */}
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '12px',
-                  marginTop: '16px',
-                  cursor: 'pointer',
-                  padding: '12px',
-                  backgroundColor: agreedToTerms ? 'rgba(0, 102, 204, 0.05)' : '#fff',
-                  borderRadius: '8px',
-                  border: `1px solid ${agreedToTerms ? '#0066CC' : '#E1E5EB'}`,
-                }}>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    marginTop: '16px',
+                    cursor: 'pointer',
+                    padding: '12px',
+                    backgroundColor: agreedToTerms ? 'rgba(0, 102, 204, 0.05)' : '#fff',
+                    borderRadius: '8px',
+                    border: `1px solid ${agreedToTerms ? '#0066CC' : '#E1E5EB'}`,
+                  }}
+                >
                   <input
                     type="checkbox"
                     checked={agreedToTerms}
@@ -961,82 +1118,136 @@ export function ChangeOrderModal({
                     }}
                   />
                   <span style={{ color: '#374151', fontSize: '13px', lineHeight: '1.5' }}>
-                    I agree to the terms stated above. By signing, I acknowledge that this change order 
-                    will become part of the original contract and I authorize Black Forest Hardwood Floors, LLC 
-                    to perform the additional work at the stated price.
+                    I agree to the terms stated above. By signing, I acknowledge that this change order will become part of the
+                    original contract and I authorize Black Forest Hardwood Floors, LLC to perform the additional work at the stated
+                    price.
                   </span>
                 </label>
 
                 {/* Signature Status */}
                 {isSignatureComplete() && agreedToTerms && (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginTop: '12px',
-                    padding: '10px 14px',
-                    backgroundColor: '#ECFDF5',
-                    borderRadius: '8px',
-                    border: '1px solid #A7F3D0',
-                  }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      marginTop: '12px',
+                      padding: '10px 14px',
+                      backgroundColor: '#ECFDF5',
+                      borderRadius: '8px',
+                      border: '1px solid #A7F3D0',
+                    }}
+                  >
                     <Check size={18} color="#059669" />
-                    <span style={{ color: '#059669', fontSize: '13px', fontWeight: '600' }}>
-                      Signature complete - ready to submit
-                    </span>
+                    <span style={{ color: '#059669', fontSize: '13px', fontWeight: '600' }}>Signature complete - ready to submit</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Send to client via */}
+              <div
+                style={{
+                  backgroundColor: colors.background,
+                  borderRadius: '12px',
+                  border: `1px solid ${colors.border}`,
+                  padding: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ color: colors.text, fontSize: '16px', fontWeight: 800 }}>Send to client via</div>
+                  <div style={{ color: colors.textSecondary, fontSize: '13px' }}>
+                    Choose how the client will receive the change order request.
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <SendOptionCard
+                    checked={sendVia.text}
+                    onToggle={() => setSendVia((prev) => ({ ...prev, text: !prev.text }))}
+                    title="Text (SMS)"
+                    subtitle="Send a link by text message."
+                    Icon={MessageSquare}
+                  />
+                  <SendOptionCard
+                    checked={sendVia.email}
+                    onToggle={() => setSendVia((prev) => ({ ...prev, email: !prev.email }))}
+                    title="Email"
+                    subtitle="Email the change order for approval."
+                    Icon={Mail}
+                  />
+                  <SendOptionCard
+                    checked={sendVia.portal}
+                    onToggle={() => setSendVia((prev) => ({ ...prev, portal: !prev.portal }))}
+                    title="Client Portal"
+                    subtitle="Publish in the portal for approval."
+                    Icon={Monitor}
+                  />
+                </div>
+
+                {!hasAnySendVia && (
+                  <div style={{ color: '#DC2626', fontSize: '12px', fontWeight: '700', marginTop: 2 }}>
+                    Choose at least one delivery method.
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Footer Actions */}
-            <div style={{
-              padding: '16px 20px',
-              borderTop: `1px solid ${colors.border}`,
-              display: 'flex',
-              gap: '12px',
-            }}>
-              <button
-                onClick={handleSubmit}
-                style={{
-                  flex: 1,
-                  padding: '14px',
-                  backgroundColor: 'transparent',
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: '10px',
-                  color: colors.text,
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                }}
-              >
-                <Save size={18} />
-                Save
-              </button>
-              <button
-                onClick={handleSendToClient}
-                style={{
-                  flex: 1,
-                  padding: '14px',
-                  backgroundColor: '#6B5D4F',
-                  border: 'none',
-                  borderRadius: '10px',
-                  color: '#fff',
-                  fontSize: '15px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                }}
-              >
-                <Send size={18} />
-                Send to Client
-              </button>
+            {/* Footer Actions (Save + Send only) */}
+            <div
+              style={{
+                padding: '16px 20px',
+                borderTop: `1px solid ${colors.border}`,
+              }}
+            >
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={handleSubmit}
+                  style={{
+                    flex: 1,
+                    padding: '14px',
+                    backgroundColor: 'transparent',
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: '10px',
+                    color: colors.text,
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <Save size={18} />
+                  Save
+                </button>
+                <button
+                  onClick={handleSendToClient}
+                  disabled={!hasAnySendVia}
+                  style={{
+                    flex: 1,
+                    padding: '14px',
+                    backgroundColor: !hasAnySendVia ? 'rgba(107, 93, 79, 0.35)' : '#6B5D4F',
+                    border: 'none',
+                    borderRadius: '10px',
+                    color: '#fff',
+                    fontSize: '15px',
+                    fontWeight: '700',
+                    cursor: !hasAnySendVia ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    opacity: !hasAnySendVia ? 0.7 : 1,
+                  }}
+                >
+                  <Send size={18} />
+                  Send to Client
+                </button>
+              </div>
             </div>
           </>
         )}

@@ -4,42 +4,45 @@ import { SafetyGrowthScreen } from '../SafetyGrowthScreen';
 import CameraCaptureScreen from './screens/CameraCaptureScreen';
 import { EmployeePhotosScreen } from '../EmployeePhotosScreen';
 import { EmployeeMessagesScreen } from './EmployeeMessagesScreen';
+import { WorkOrderScreen } from './screens/WorkOrderScreen';
+import { JobBriefingScreen } from './screens/JobBriefingScreen';
+import TimeEntryScreen from './screens/TimeEntryScreen';
 import { ThemeProvider, useTheme, ThemeToggleButton } from './ThemeProvider';
 
-type Tab = 'jobs' | 'photos' | 'messages' | 'me';
+type Tab = 'jobs' | 'photos' | 'messages' | 'me' | 'p4p' | 'timesheet' | 'workorder' | 'briefing';
 
 // CompanyCam Blue Color
 const CAMERA_BLUE = '#00A3FF';
 
 // Sample jobs (in production, fetch from API)
 const initialJobs = [
-  { 
-    id: 'job-001', 
-    name: 'Anderson Residence', 
-    clientName: 'John Anderson', 
+  {
+    id: 'job-001',
+    name: 'Anderson Residence',
+    clientName: 'John Anderson',
     address: '5678 E Appleway Blvd',
     latitude: 47.6588,
-    longitude: -117.4260,
+    longitude: -117.426,
     rooms: ['Living Room', 'Kitchen', 'Master Bedroom', 'Hallway']
   },
-  { 
-    id: 'job-002', 
-    name: 'Thompson Office', 
-    clientName: 'Sarah Thompson', 
+  {
+    id: 'job-002',
+    name: 'Thompson Office',
+    clientName: 'Sarah Thompson',
     address: '9012 W Seltice Way',
     latitude: 47.6739,
     longitude: -117.4186,
     rooms: ['Main Lobby', 'Conference Room A', 'Conference Room B', 'Executive Office', 'Break Room']
   },
-  { 
-    id: 'job-003', 
-    name: 'Wilson Home', 
-    clientName: 'Mike Wilson', 
+  {
+    id: 'job-003',
+    name: 'Wilson Home',
+    clientName: 'Mike Wilson',
     address: '1122 W Northwest Blvd',
     latitude: 47.6901,
     longitude: -117.3963,
     rooms: []
-  },
+  }
 ];
 
 // Sample photos (in production, fetch from API)
@@ -130,6 +133,8 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
   const [photos, setPhotos] = useState(initialPhotos);
   const [jobs, setJobs] = useState(initialJobs);
   const [filterJobId, setFilterJobId] = useState<string | undefined>(undefined);
+  const [workOrderJobId, setWorkOrderJobId] = useState<string | undefined>(undefined);
+  const [briefingJobId, setBriefingJobId] = useState<string | undefined>(undefined);
 
   const currentEmployee = {
     name: 'Mike Johnson',
@@ -141,11 +146,9 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
   };
 
   const handleAddRoom = (jobId: string, roomName: string) => {
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
-        ? { ...job, rooms: [...(job.rooms || []), roomName] }
-        : job
-    ));
+    setJobs(prev =>
+      prev.map(job => (job.id === jobId ? { ...job, rooms: [...(job.rooms || []), roomName] } : job))
+    );
     console.log(`Added room "${roomName}" to job ${jobId}`);
   };
 
@@ -163,9 +166,7 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
     gpsSuggestedJobId?: string;
   }) => {
     const job = jobs.find(j => j.id === photoData.jobId);
-    const gpsSuggestedJob = photoData.gpsSuggestedJobId 
-      ? jobs.find(j => j.id === photoData.gpsSuggestedJobId) 
-      : null;
+    const gpsSuggestedJob = photoData.gpsSuggestedJobId ? jobs.find(j => j.id === photoData.gpsSuggestedJobId) : null;
     const now = new Date();
 
     const newPhoto = {
@@ -201,7 +202,7 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
     };
 
     setPhotos(prev => [newPhoto, ...prev]);
-    
+
     if (photoData.gpsSuggestedJobId) {
       console.warn(`GPS Mismatch: Photo saved to ${job?.name} but GPS suggested ${gpsSuggestedJob?.name}`);
     }
@@ -217,19 +218,75 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
     setActiveTab('photos');
   };
 
+  const openWorkOrder = (jobId?: string) => {
+    if (jobId) setWorkOrderJobId(jobId);
+    setActiveTab('workorder');
+  };
+
+  const openBriefing = (jobId?: string) => {
+    if (jobId) setBriefingJobId(jobId);
+    setActiveTab('briefing');
+  };
+
+  // Handle internal navigation for employee portal screens
+  const handleInternalNavigate = (page: string, jobId?: string) => {
+    if (page === 'P4P Growth') {
+      setActiveTab('p4p');
+      return;
+    }
+
+    // ✅ IMPORTANT FIX:
+    // When MyJobScreen asks to go to "Photos", we want the ADMIN photos page (PhotosPage),
+    // so we DO NOT route to the employee photos tab here.
+    if (page === 'Photos') {
+      onNavigate?.('Photos');
+      return;
+    }
+
+    // ✅ Timesheet should open the Employee TimeEntryScreen (not admin TimeLogsPage)
+    if (
+      page === 'Time Sheet' ||
+      page === 'TimeSheet' ||
+      page === 'timesheet' ||
+      page === 'TimeEntry'
+    ) {
+      setActiveTab('timesheet');
+      return;
+    }
+
+    if (page === 'Work Order') {
+      if (jobId) setWorkOrderJobId(jobId);
+      setActiveTab('workorder');
+      return;
+    }
+
+    if (page === 'Job Briefing') {
+      if (jobId) setBriefingJobId(jobId);
+      setActiveTab('briefing');
+      return;
+    }
+
+    // Pass everything else up to App
+    onNavigate?.(page);
+  };
+
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      backgroundColor: colors.background,
-      transition: 'background-color 0.3s ease'
-    }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundColor: colors.background,
+        transition: 'background-color 0.3s ease'
+      }}
+    >
       {/* Theme Toggle in corner */}
-      <div style={{
-        position: 'fixed',
-        top: 'max(12px, env(safe-area-inset-top))',
-        right: '12px',
-        zIndex: 1000
-      }}>
+      <div
+        style={{
+          position: 'fixed',
+          top: 'max(12px, env(safe-area-inset-top))',
+          right: '12px',
+          zIndex: 1000
+        }}
+      >
         <ThemeToggleButton />
       </div>
 
@@ -238,8 +295,10 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
         <MyJobScreen
           onOpenCamera={openCamera}
           onOpenPhotos={openPhotos}
+          onOpenWorkOrder={openWorkOrder}
+          onOpenBriefing={openBriefing}
           onTabChange={handleTabChange}
-          onNavigate={onNavigate}
+          onNavigate={handleInternalNavigate}
         />
       )}
 
@@ -271,14 +330,13 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
           >
             ← Back
           </button>
-          <div style={{ paddingTop: '50px' }}>
-            <EmployeePhotosScreen
-              photos={photos}
-              jobs={jobs.map(j => ({ id: j.id, name: j.name }))}
-              onTakePhoto={() => setIsCameraOpen(true)}
-              filterJobId={filterJobId}
-            />
-          </div>
+
+          <EmployeePhotosScreen
+            photos={photos}
+            jobs={jobs.map(j => ({ id: j.id, name: j.name }))}
+            onTakePhoto={() => setIsCameraOpen(true)}
+            filterJobId={filterJobId}
+          />
         </div>
       )}
 
@@ -307,11 +365,8 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
           >
             ← Back
           </button>
-          <div style={{ paddingTop: '50px' }}>
-            <EmployeeMessagesScreen 
-              onOpenConversation={(id) => console.log('Open conversation:', id)}
-            />
-          </div>
+
+          <EmployeeMessagesScreen onOpenConversation={id => console.log('Open conversation:', id)} />
         </div>
       )}
 
@@ -340,55 +395,98 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
           >
             ← Back
           </button>
+
           <div style={{ padding: '80px 20px 120px', textAlign: 'center' }}>
             {/* Profile Avatar */}
-            <div style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '50%',
-              backgroundColor: employeeColor,
-              margin: '0 auto 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '28px',
-              fontWeight: '700',
-              color: '#FFFFFF'
-            }}>
+            <div
+              style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                backgroundColor: employeeColor,
+                margin: '0 auto 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '28px',
+                fontWeight: '700',
+                color: '#FFFFFF'
+              }}
+            >
               MJ
             </div>
             <h2 style={{ color: colors.text, marginBottom: '4px' }}>Mike Johnson</h2>
             <p style={{ color: colors.textSecondary, marginBottom: '32px' }}>Technician</p>
-            
+
             {/* Profile Menu Items */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '320px', margin: '0 auto' }}>
-              <ProfileMenuItem 
-                icon="⏱️" 
-                label="Time Tracking" 
-                colors={colors}
-                onClick={() => console.log('Time Tracking')}
-              />
-              <ProfileMenuItem 
-                icon="👷" 
-                label="Team Activity" 
-                colors={colors}
-                onClick={() => console.log('Team Activity')}
-              />
-              <ProfileMenuItem 
-                icon="🛡️" 
-                label="Safety & Growth" 
-                colors={colors}
-                onClick={() => console.log('Safety')}
-              />
-              <ProfileMenuItem 
-                icon="⚙️" 
-                label="Settings" 
-                colors={colors}
-                onClick={() => console.log('Settings')}
-              />
+              <ProfileMenuItem icon="⏱️" label="Time Tracking" colors={colors} onClick={() => setActiveTab('timesheet')} />
+              <ProfileMenuItem icon="👷" label="Team Activity" colors={colors} onClick={() => console.log('Team Activity')} />
+              <ProfileMenuItem icon="🛡️" label="Safety & Growth" colors={colors} onClick={() => console.log('Safety')} />
+              <ProfileMenuItem icon="⚙️" label="Settings" colors={colors} onClick={() => console.log('Settings')} />
             </div>
           </div>
         </div>
+      )}
+
+      {/* P4P & Growth Screen */}
+      {activeTab === 'p4p' && (
+        <div style={{ position: 'relative' }}>
+          {/* Back to Portal button */}
+          <button
+            onClick={() => setActiveTab('jobs')}
+            style={{
+              position: 'fixed',
+              top: '12px',
+              left: '12px',
+              zIndex: 1000,
+              padding: '10px 16px',
+              backgroundColor: '#2E7D32',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+            }}
+          >
+            ← Back
+          </button>
+          <SafetyGrowthScreen />
+        </div>
+      )}
+
+      {/* ✅ Time Sheet Screen now uses TimeEntryScreen.tsx */}
+      {activeTab === 'timesheet' && (
+        <TimeEntryScreen
+          onBack={() => setActiveTab('jobs')}
+        />
+      )}
+
+      {/* Work Order Screen */}
+      {activeTab === 'workorder' && (
+        <WorkOrderScreen
+          onClose={() => {
+            setActiveTab('jobs');
+            setWorkOrderJobId(undefined);
+          }}
+          jobId={workOrderJobId}
+          colors={colors}
+        />
+      )}
+
+      {/* Job Briefing Screen */}
+      {activeTab === 'briefing' && (
+        <JobBriefingScreen
+          onClose={() => {
+            setActiveTab('jobs');
+            setBriefingJobId(undefined);
+          }}
+          jobId={briefingJobId}
+        />
       )}
 
       {/* Camera Screen */}
@@ -408,9 +506,14 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
 }
 
 // Profile Menu Item Component
-function ProfileMenuItem({ icon, label, colors, onClick }: { 
-  icon: string; 
-  label: string; 
+function ProfileMenuItem({
+  icon,
+  label,
+  colors,
+  onClick
+}: {
+  icon: string;
+  label: string;
   colors: any;
   onClick: () => void;
 }) {

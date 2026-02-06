@@ -29,6 +29,8 @@ import { SidebarEnhanced } from './SidebarEnhanced';
 import BoardroomNewClientModal from './BoardroomNewClientModal';
 import DriveTimeReminder from './DriveTimeReminder';
 import { isFeatureEnabled } from './DriveTimeService';
+import { sampleClients } from './sampleClients';
+import ClientDetailsPage from './ClientDetailsPage';
 
 // ZIP code to region mapping for Spokane area
 const ZIP_TO_REGION: { [key: string]: string } = {
@@ -64,6 +66,7 @@ const ZIP_TO_REGION: { [key: string]: string } = {
 };
 
 interface Appointment {
+  clientId?: number;
   id: number;
   contactName?: string;
   firstName?: string;
@@ -266,182 +269,137 @@ const initialNewClientFormData: NewClientFormData = {
 
 export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: { onNavigate?: (page: string) => void; hideOnsiteVisits?: boolean }) {
   // Example appointments for demo - these will be replaced by real data when API loads
-  const exampleAppointments: Appointment[] = [
-    {
-      id: 9001,
-      contact: 'Sarah Johnson',
-      firstName: 'Sarah',
-      lastName: 'Johnson',
-      location: '14520 E Broadway Ave, Spokane Valley, WA 99216',
-      region: 'Valley',
-      purpose: 'Onsite Visit',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
-      startTime: '09:00',
-      endTime: '10:00',
-      description: 'Initial consultation for hardwood floor refinishing. Customer interested in dustless sanding.'
-    },
-    {
-      id: 9002,
-      contact: 'Mike Williams',
-      firstName: 'Mike',
-      lastName: 'Williams',
-      location: '1234 N Division St, Spokane, WA 99201',
-      region: 'Spokane',
-      purpose: 'Onsite Visit',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
-      startTime: '14:00',
-      endTime: '15:00',
-      description: 'Measure for new hardwood installation in living room and dining room. Approximately 800 sqft.'
-    },
-    {
-      id: 9003,
-      contact: 'Robert Anderson',
-      firstName: 'Robert',
-      lastName: 'Anderson',
-      location: '5678 E Appleway Blvd, Liberty Lake, WA 99019',
-      region: 'Liberty Lake',
-      purpose: 'Sand & Finish',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      startTime: '08:00',
-      endTime: '17:00',
-      description: 'Full sand and refinish of oak hardwood floors. 1,200 sqft. 3 coats of oil-based poly.',
-      foreman: 'Mike'
-    },
-    {
-      id: 9004,
-      contact: 'Jennifer Thompson',
-      firstName: 'Jennifer',
-      lastName: 'Thompson',
-      location: '9012 W Seltice Way, Post Falls, ID 83854',
-      region: 'Post Falls',
-      purpose: 'Install',
-      startDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      startTime: '08:00',
-      endTime: '17:00',
-      description: 'New installation of 3/4" red oak hardwood. Remove existing carpet. 950 sqft.',
-      foreman: 'David'
-    },
-    {
-      id: 9005,
-      contact: 'Carlos Martinez',
-      firstName: 'Carlos',
-      lastName: 'Martinez',
-      location: '3456 N Government Way, Coeur d\'Alene, ID 83814',
-      region: 'CDA',
-      purpose: 'Onsite Visit',
-      startDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      startTime: '11:00',
-      endTime: '12:00',
-      description: 'Quote for staircase refinishing and repair. 14 steps plus landing.'
-    },
-    {
-      id: 9006,
-      contact: 'Emily Davis',
-      firstName: 'Emily',
-      lastName: 'Davis',
-      location: '7890 S Regal St, Spokane, WA 99223',
-      region: 'Spokane',
-      purpose: 'Onsite Visit',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
-      startTime: '10:30',
-      endTime: '11:30',
-      description: 'Follow-up visit for moisture testing. Previous water damage in kitchen area.'
-    },
-    {
-      id: 9007,
-      contact: 'James Wilson',
-      firstName: 'James',
-      lastName: 'Wilson',
-      location: '2345 E 29th Ave, Spokane, WA 99203',
-      region: 'Spokane',
-      purpose: 'Wood Delivery',
-      startDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      startTime: '08:00',
-      endTime: '09:00',
-      description: 'Deliver 1,000 sqft of white oak hardwood. Customer will acclimate for 2 weeks.'
-    },
-    {
-      id: 9008,
-      contact: 'Patricia Brown',
-      firstName: 'Patricia',
-      lastName: 'Brown',
-      location: '4567 N Nevada St, Spokane, WA 99205',
-      region: 'Spokane',
-      purpose: 'Sand & Finish',
-      startDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      startTime: '08:00',
-      endTime: '17:00',
-      description: 'Sand and refinish maple floors throughout home. 1,800 sqft. Water-based finish.',
-      foreman: 'Steve'
-    },
-    {
-      id: 9009,
-      contact: 'David Garcia',
-      firstName: 'David',
-      lastName: 'Garcia',
-      location: '8901 E Sprague Ave, Spokane Valley, WA 99212',
-      region: 'Valley',
-      purpose: 'Onsite Visit',
-      startDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      startTime: '13:00',
-      endTime: '14:00',
-      description: 'Estimate for commercial space. Restaurant flooring replacement. Need slip-resistant finish.'
-    },
-    {
-      id: 9010,
-      contact: 'Lisa Taylor',
-      firstName: 'Lisa',
-      lastName: 'Taylor',
-      location: '1122 W Northwest Blvd, Spokane, WA 99205',
-      region: 'Spokane',
-      purpose: 'Install',
-      startDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      startTime: '08:00',
-      endTime: '17:00',
-      description: 'Install engineered hardwood in basement. Moisture barrier required. 650 sqft.',
-      foreman: 'Mike'
-    },
-    {
-      id: 9011,
-      contact: 'Richard Lee',
-      firstName: 'Richard',
-      lastName: 'Lee',
-      location: '3344 E 57th Ave, Spokane Valley, WA 99223',
-      region: 'Valley',
-      purpose: 'Onsite Visit',
-      startDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      startTime: '15:00',
-      endTime: '16:00',
-      description: 'New construction final walkthrough. Verify installation quality before builder handoff.'
-    },
-    {
-      id: 9012,
-      contact: 'Amanda White',
-      firstName: 'Amanda',
-      lastName: 'White',
-      location: '5566 N Ash St, Spokane, WA 99208',
-      region: 'Spokane',
-      purpose: 'Touchup',
-      startDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      startTime: '09:00',
-      endTime: '11:00',
-      description: 'Touch up scratches from furniture move. Small area near front entry. Warranty work.'
-    }
-  ];
+  
+// Example appointments for demo - built from sampleClients so clicking always opens a real client
+const today = new Date();
+const iso = (d: Date) => d.toISOString().split('T')[0];
+const addDays = (n: number) => {
+  const d = new Date(today);
+  d.setDate(d.getDate() + n);
+  return d;
+};
 
-  // Example contacts for demo - these will be replaced by real data when API loads
+const buildExampleAppointment = (
+  i: number,
+  overrides: Partial<Appointment>
+): Appointment => {
+  const client: any = sampleClients[i] || sampleClients[0] || {};
+  const primary: any = client?.primaryContact || {};
+  const prop: any = (client?.properties && client.properties[0]) || {};
+  const contactName = `${primary.firstName || ''} ${primary.lastName || ''}`.trim() || client?.accountName || 'Client';
+  const location = prop?.address
+    ? `${prop.address}, ${prop.city || ''}, ${prop.state || ''} ${prop.zip || ''}`.replace(/\s+,/g, ',').replace(/\s{2,}/g, ' ').trim()
+    : (overrides.location || '');
+
+  return {
+    id: overrides.id as number,
+    clientId: client?.id,
+    contact: contactName,
+    firstName: primary.firstName || overrides.firstName || '',
+    lastName: primary.lastName || overrides.lastName || '',
+    location,
+    address: location,
+    region: prop?.region || overrides.region || '',
+    purpose: overrides.purpose || 'Onsite Visit',
+    startDate: overrides.startDate || iso(today),
+    endDate: overrides.endDate || (overrides.startDate || iso(today)),
+    startTime: overrides.startTime || '09:00',
+    endTime: overrides.endTime || '10:00',
+    description: overrides.description || 'Demo appointment created from sampleClients so calendar clicks open the full client details.',
+    phone: (primary.phones && primary.phones[0]) || overrides.phone || '',
+    employeeName: overrides.employeeName,
+    foreman: overrides.foreman,
+  } as Appointment;
+};
+
+const exampleAppointments: Appointment[] = [
+  // Multiple appointments on the same day to test row expansion
+  buildExampleAppointment(0, {
+    id: 9001,
+    purpose: 'Sand & Finish',
+    startDate: iso(today),
+    endDate: iso(addDays(3)),
+    startTime: '08:00',
+    endTime: '17:00',
+    description: 'Full sand & finish demo job. Multi-day bar.',
+    foreman: 'Mike',
+    employeeName: 2
+  }),
+  buildExampleAppointment(1, {
+    id: 9002,
+    purpose: 'Install',
+    startDate: iso(today),
+    endDate: iso(addDays(2)),
+    startTime: '08:00',
+    endTime: '17:00',
+    description: 'Install demo job. Multi-day bar.',
+    foreman: 'David',
+    employeeName: 3
+  }),
+  buildExampleAppointment(2, {
+    id: 9003,
+    purpose: 'Onsite Visit',
+    startDate: iso(today),
+    endDate: iso(today),
+    startTime: '09:00',
+    endTime: '10:00',
+    description: 'Onsite visit demo appointment (timed).',
+    employeeName: 4
+  }),
+  buildExampleAppointment(3, {
+    id: 9004,
+    purpose: 'Onsite Visit',
+    startDate: iso(today),
+    endDate: iso(today),
+    startTime: '11:00',
+    endTime: '12:00',
+    description: 'Second onsite visit on the same day (timed).',
+    employeeName: 5
+  }),
+  buildExampleAppointment(4, {
+    id: 9005,
+    purpose: 'Wood Delivery',
+    startDate: iso(addDays(1)),
+    endDate: iso(addDays(1)),
+    startTime: '08:00',
+    endTime: '09:00',
+    description: 'Wood delivery demo appointment.',
+    employeeName: 2
+  }),
+  buildExampleAppointment(0, {
+    id: 9006,
+    purpose: 'Touchup',
+    startDate: iso(addDays(2)),
+    endDate: iso(addDays(2)),
+    startTime: '13:00',
+    endTime: '14:30',
+    description: 'Touchup demo appointment.',
+    employeeName: 6
+  }),
+  buildExampleAppointment(5, {
+    id: 9007,
+    purpose: 'Onsite Visit',
+    startDate: iso(addDays(2)),
+    endDate: iso(addDays(2)),
+    startTime: '15:00',
+    endTime: '16:00',
+    description: 'Another timed onsite visit.',
+    employeeName: 7
+  }),
+  buildExampleAppointment(6, {
+    id: 9008,
+    purpose: 'Install',
+    startDate: iso(addDays(5)),
+    endDate: iso(addDays(8)),
+    startTime: '08:00',
+    endTime: '17:00',
+    description: 'Longer install demo job to show multi-week spanning.',
+    foreman: 'Steve',
+    employeeName: 8
+  }),
+];
+
+// Example contacts for demo - these will be replaced by real data when API loads
   const exampleContacts: Contact[] = [
     { id: 9001, firstName: 'Steve', lastName: 'Osborn', companyName: '', phone: '509-555-1234', email: 'steve@example.com' },
     { id: 9002, firstName: 'Sarah', lastName: 'Johnson', companyName: '', phone: '509-555-2345', email: 'sarah@example.com' },
@@ -485,6 +443,11 @@ export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [showDayModal, setShowDayModal] = useState(false);
+  // Client Details modal state (open full client details directly from calendar click)
+  const [showClientDetailsModal, setShowClientDetailsModal] = useState(false);
+  const [clientDetailsClientId, setClientDetailsClientId] = useState<string | number | null>(null);
+  const [clientDetailsAppointmentId, setClientDetailsAppointmentId] = useState<number | null>(null);
+
   
   // Matching client auto-fill state
   const [matchingClient, setMatchingClient] = useState<Contact | null>(null);
@@ -1588,6 +1551,43 @@ export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: {
     }
   };
 
+  
+  // When an appointment is clicked, jump to the Clients page and pre-select the matching client (demo-friendly).
+  
+// When an appointment is clicked, open the full ClientDetailsPage (modal) for that client.
+const openClientFromAppointment = (apt: Appointment) => {
+  const normalize = (v: string) => (v || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const digits = (v: string) => (v || '').replace(/\D/g, '');
+
+  const aptNameRaw =
+    apt.contactName ||
+    [apt.firstName, apt.lastName].filter(Boolean).join(' ') ||
+    apt.contact ||
+    '';
+
+  const aptName = normalize(aptNameRaw);
+  const aptPhone = digits(apt.phone || '');
+
+  const match = sampleClients.find((c: any) => {
+    const pc = c.primaryContact || {};
+    const cName = normalize([pc.firstName, pc.lastName].filter(Boolean).join(' '));
+    const cPhone = digits((pc.phones && pc.phones[0]) || '');
+    return (aptName && cName && aptName === cName) || (aptPhone && cPhone && aptPhone === cPhone);
+  });
+
+  const selectedId = (apt.clientId ?? match?.id ?? sampleClients?.[0]?.id ?? null) as any;
+
+  // Store a hint (optional) so other pages can still use it if needed
+  if (selectedId) sessionStorage.setItem('br_calendar_selected_contact_id', String(selectedId));
+  if (aptNameRaw) sessionStorage.setItem('br_calendar_selected_contact_name', aptNameRaw);
+  if (apt.phone) sessionStorage.setItem('br_calendar_selected_contact_phone', apt.phone);
+  sessionStorage.setItem('br_calendar_selected_appointment_id', String(apt.id));
+
+  // ✅ Open the full details screen directly (no routing changes required)
+  setClientDetailsClientId(selectedId);
+  setShowClientDetailsModal(true);
+};
+
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const dayNamesShort = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -1699,6 +1699,31 @@ export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: {
   
   // Get display name for appointments - shows formatted contact name
   const getDisplayName = (apt: Appointment) => formatContactName(apt.contact);
+
+  // Called from ClientDetailsPage: updates the selected appointment's assigned foreman/employee immediately
+  const handleAssignForemanFromDetails = (args: { appointmentId: number | string; employeeId: number | string; employeeName?: string }) => {
+    const aptId = Number(args.appointmentId);
+    const empId = args.employeeId === '' ? undefined : Number(args.employeeId);
+
+    setAppointments((prev) =>
+      prev.map((a) => {
+        if (a.id !== aptId) return a;
+
+        const foremanName =
+          args.employeeName ||
+          (() => {
+            const emp = employees.find((e) => e.id === empId);
+            return emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.trim() : a.foreman;
+          })();
+
+        return {
+          ...a,
+          employeeName: empId as any,
+          foreman: foremanName,
+        };
+      })
+    );
+  };
   
   // Check if appointment should show time (not a multi-day job)
   const shouldShowTimeInCalendar = (apt: Appointment): boolean => {
@@ -1827,19 +1852,19 @@ export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: {
         </div>
       )}
 
-      <div style={{ flex: 1, marginLeft: (isMobile || hideOnsiteVisits) ? 0 : '200px', padding: isMobile ? '16px' : '24px', paddingTop: hideOnsiteVisits ? '80px' : (isMobile ? '16px' : '24px'), paddingLeft: hideOnsiteVisits ? '140px' : (isMobile ? '16px' : '24px'), overflow: 'auto', height: '100vh' }}>
+      <div style={{ flex: 1, marginLeft: (isMobile || hideOnsiteVisits) ? 0 : '200px', padding: isMobile ? '16px' : '24px', paddingTop: hideOnsiteVisits ? '80px' : (isMobile ? '16px' : '24px'), paddingLeft: hideOnsiteVisits ? '140px' : (isMobile ? '16px' : '24px'), overflow: 'hidden', height: '100vh', display: 'flex', flexDirection: 'column' }}>
         {isMobile && !hideOnsiteVisits && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
             <button onClick={() => setShowMobileSidebar(true)} style={{ padding: '8px', backgroundColor: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', cursor: 'pointer' }}>
               <Menu size={24} color={textColor} />
             </button>
-            <h1 style={{ fontSize: '24px', color: textColor, margin: 0, fontWeight: 'bold' }}>Appointments</h1>
+            <h1 style={{ fontSize: '24px', color: textColor, margin: 0, fontWeight: 'bold' }}>Calendar</h1>
           </div>
         )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: 'row', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '200px' }}>
-            <h1 style={{ fontSize: '28px', color: textColor, margin: '0 0 4px 0', fontWeight: 'bold' }}>{hideOnsiteVisits ? 'My Schedule' : 'Appointments'}</h1>
+            <h1 style={{ fontSize: '28px', color: textColor, margin: '0 0 4px 0', fontWeight: 'bold' }}>{hideOnsiteVisits ? 'My Schedule' : 'Calendar'}</h1>
             <p style={{ fontSize: '14px', color: textMuted, margin: 0 }}>{hideOnsiteVisits ? 'View your schedule and request time off' : 'Schedule appointments, manage jobs, and track crew assignments'}</p>
           </div>
           {hideOnsiteVisits ? (
@@ -1847,19 +1872,24 @@ export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: {
               <Plus size={18} />Request Time Off
             </button>
           ) : (
-            <button onClick={openNewAppointmentModal} style={{ padding: '12px 20px', backgroundColor: accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 0 0 #A88438', flexShrink: 0 }}>
+            <button onClick={() => openNewAppointmentModal()} style={{ padding: '12px 20px', backgroundColor: accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 0 0 #A88438', flexShrink: 0 }}>
               <Plus size={18} />New Appointment
             </button>
           )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', flex: 1, minHeight: 0, overflow: 'hidden' }}>
           {/* Map and Today's Appointments sections - hidden for now
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '24px' }}>
             ... sections hidden ...
           </div>
           */}
-          <div ref={calendarContainerRef} style={{ backgroundColor: cardBg, borderRadius: '12px', border: `1px solid ${borderColor}`, padding: '20px', position: 'relative', maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
+          <div ref={calendarContainerRef} style={{ backgroundColor: cardBg, borderRadius: '12px', border: `1px solid ${borderColor}`, padding: '20px', position: 'relative', flex: 1,
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              flex: '1 1 auto',
+              minHeight: 0 }}>
             {/* Month navigation header - sticky at top of calendar */}
             <div 
               ref={calendarHeaderRef}
@@ -1957,7 +1987,9 @@ export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: {
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
-                minHeight: 'calc(100vh - 250px)' // Fill available space below header
+                flex: 1,
+                minHeight: 0,
+                overflow: 'hidden' // Fill available space below header
               }}>
                 {/* Grid cells - restructured with date headers per week */}
                 <div style={{ 
@@ -2103,7 +2135,7 @@ export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: {
                                     draggable
                                     onDragStart={(e) => handleDragStart(e, apt, 'move')}
                                     onDragEnd={handleDragEnd}
-                                    onClick={(e) => { e.stopPropagation(); if (!isDragging && onNavigate) onNavigate(`JobCard/${apt.id}`); }}
+                                    onClick={(e) => { e.stopPropagation(); if (!isDragging) openClientFromAppointment(apt); }}
                                     style={{
                                       position: 'absolute',
                                       top: `${topOffset}px`,
@@ -2278,7 +2310,7 @@ export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: {
                                         draggable
                                         onDragStart={(e) => handleDragStart(e, apt, 'move')}
                                         onDragEnd={handleDragEnd}
-                                        onClick={(e) => { e.stopPropagation(); if (!isDragging && onNavigate) onNavigate(`JobCard/${apt.id}`); }} 
+                                        onClick={(e) => { e.stopPropagation(); if (!isDragging) openClientFromAppointment(apt); }} 
                                         style={{ 
                                           backgroundColor: isDragging ? `${appointmentColor}99` : appointmentColor, 
                                           color: '#FFFFFF', 
@@ -4065,6 +4097,92 @@ export default function CalendarPage({ onNavigate, hideOnsiteVisits = false }: {
           }
         }
       `}</style>
+
+
+{/* Client Details Modal (near-fullscreen, Boardroom theme) */}
+{showClientDetailsModal && clientDetailsClientId !== null && (
+  <div
+    style={{
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(0,0,0,0.78)',
+      zIndex: 99999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '18px',
+    }}
+    onClick={() => { setShowClientDetailsModal(false); setClientDetailsAppointmentId(null); }}
+  >
+    <div
+      style={{
+        width: 'calc(100vw - 36px)',
+        height: 'calc(100vh - 36px)',
+        maxWidth: '1650px',
+        backgroundColor: '#1A1A1A',
+        borderRadius: '18px',
+        border: '1px solid #3D3D3D',
+        boxShadow: '0 22px 70px rgba(0,0,0,0.75)',
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Top fade highlight (subtle Boardroom accent) */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          background:
+            'radial-gradient(900px 260px at 15% 0%, rgba(201,160,73,0.12) 0%, rgba(201,160,73,0.00) 60%)',
+        }}
+      />
+
+      {/* Close button */}
+      <button
+        onClick={() => { setShowClientDetailsModal(false); setClientDetailsAppointmentId(null); }}
+        style={{
+          position: 'absolute',
+          top: 14,
+          right: 14,
+          width: 42,
+          height: 42,
+          borderRadius: 12,
+          border: '1px solid #5A4A28',
+          background: 'linear-gradient(180deg, #D9B563 0%, #C9A049 70%, #A88438 100%)',
+          color: '#1A1A1A',
+          cursor: 'pointer',
+          fontSize: 20,
+          fontWeight: 900,
+          lineHeight: '40px',
+          boxShadow: '0 6px 0 rgba(168,132,56,0.7), 0 10px 20px rgba(201,160,73,0.25)',
+          zIndex: 100000,
+        }}
+        title="Close"
+      >
+        ×
+      </button>
+
+      {/* Content */}
+      <div style={{ width: '100%', height: '100%', overflow: 'auto' }} className="vertical-scroll">
+        <ClientDetailsPage
+                  clientId={clientDetailsClientId as any}
+                  appointmentId={clientDetailsAppointmentId as any}
+                  employees={employees as any}
+                  initialForemanId={(() => {
+                    const a = appointments.find((x) => x.id === (clientDetailsAppointmentId as any));
+                    return (a as any)?.employeeName ?? '';
+                  })()}
+                  onAssignForeman={handleAssignForemanFromDetails}
+                  showSidebar={true}
+                  clients={sampleClients as any}
+                  onNavigate={onNavigate}
+                />
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

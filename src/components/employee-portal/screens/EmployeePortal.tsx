@@ -4,9 +4,11 @@ import { SafetyGrowthScreen } from '../SafetyGrowthScreen';
 import CameraCaptureScreen from './screens/CameraCaptureScreen';
 import { EmployeePhotosScreen } from '../EmployeePhotosScreen';
 import { EmployeeMessagesScreen } from './EmployeeMessagesScreen';
+import { WorkOrderScreen } from './screens/WorkOrderScreen';
+import { JobBriefingScreen } from './screens/JobBriefingScreen';
 import { ThemeProvider, useTheme, ThemeToggleButton } from './ThemeProvider';
 
-type Tab = 'jobs' | 'photos' | 'messages' | 'me';
+type Tab = 'jobs' | 'photos' | 'messages' | 'me' | 'p4p' | 'timesheet' | 'workorder' | 'briefing';
 
 // CompanyCam Blue Color
 const CAMERA_BLUE = '#00A3FF';
@@ -130,6 +132,8 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
   const [photos, setPhotos] = useState(initialPhotos);
   const [jobs, setJobs] = useState(initialJobs);
   const [filterJobId, setFilterJobId] = useState<string | undefined>(undefined);
+  const [workOrderJobId, setWorkOrderJobId] = useState<string | undefined>(undefined);
+  const [briefingJobId, setBriefingJobId] = useState<string | undefined>(undefined);
 
   const currentEmployee = {
     name: 'Mike Johnson',
@@ -217,6 +221,36 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
     setActiveTab('photos');
   };
 
+  const openWorkOrder = (jobId?: string) => {
+    if (jobId) setWorkOrderJobId(jobId);
+    setActiveTab('workorder');
+  };
+
+  const openBriefing = (jobId?: string) => {
+    if (jobId) setBriefingJobId(jobId);
+    setActiveTab('briefing');
+  };
+
+  // Handle internal navigation for employee portal screens
+  const handleInternalNavigate = (page: string, jobId?: string) => {
+    if (page === 'P4P Growth') {
+      setActiveTab('p4p');
+    } else if (page === 'Photos') {
+      setActiveTab('photos');
+    } else if (page === 'Time Sheet') {
+      setActiveTab('timesheet');
+    } else if (page === 'Work Order') {
+      if (jobId) setWorkOrderJobId(jobId);
+      setActiveTab('workorder');
+    } else if (page === 'Job Briefing') {
+      if (jobId) setBriefingJobId(jobId);
+      setActiveTab('briefing');
+    } else {
+      // Pass other navigation to parent
+      onNavigate?.(page);
+    }
+  };
+
   return (
     <div style={{ 
       minHeight: '100vh', 
@@ -238,8 +272,10 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
         <MyJobScreen
           onOpenCamera={openCamera}
           onOpenPhotos={openPhotos}
+          onOpenWorkOrder={openWorkOrder}
+          onOpenBriefing={openBriefing}
           onTabChange={handleTabChange}
-          onNavigate={onNavigate}
+          onNavigate={handleInternalNavigate}
         />
       )}
 
@@ -387,6 +423,206 @@ function EmployeePortalInner({ onNavigate }: { onNavigate?: (page: string) => vo
         </div>
       )}
 
+      {/* P4P & Growth Screen */}
+      {activeTab === 'p4p' && (
+        <div style={{ position: 'relative' }}>
+          {/* Back to Portal button */}
+          <button
+            onClick={() => setActiveTab('jobs')}
+            style={{
+              position: 'fixed',
+              top: '12px',
+              left: '12px',
+              zIndex: 1000,
+              padding: '10px 16px',
+              backgroundColor: '#2E7D32',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+            }}
+          >
+            ← Back
+          </button>
+          <SafetyGrowthScreen />
+        </div>
+      )}
+
+      {/* Time Sheet Screen */}
+      {activeTab === 'timesheet' && (
+        <div style={{ position: 'relative' }}>
+          {/* Back to Portal button */}
+          <button
+            onClick={() => setActiveTab('jobs')}
+            style={{
+              position: 'fixed',
+              top: '12px',
+              left: '12px',
+              zIndex: 1000,
+              padding: '10px 16px',
+              backgroundColor: '#D76A6A',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+            }}
+          >
+            ← Back
+          </button>
+          <div style={{ 
+            padding: '80px 20px 120px', 
+            minHeight: '100vh',
+            backgroundColor: colors.background 
+          }}>
+            <h2 style={{ 
+              color: colors.text, 
+              fontSize: '24px', 
+              fontWeight: '700',
+              marginBottom: '24px'
+            }}>
+              Time Sheet
+            </h2>
+            
+            {/* Current Week Summary */}
+            <div style={{
+              backgroundColor: colors.backgroundSecondary,
+              borderRadius: '16px',
+              padding: '20px',
+              marginBottom: '20px',
+              border: `1px solid ${colors.border}`
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '16px'
+              }}>
+                <span style={{ color: colors.textSecondary, fontSize: '14px' }}>This Week</span>
+                <span style={{ color: '#D76A6A', fontSize: '14px', fontWeight: '600' }}>Dec 30 - Jan 5</span>
+              </div>
+              
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr 1fr 1fr', 
+                gap: '16px',
+                textAlign: 'center'
+              }}>
+                <div>
+                  <p style={{ color: colors.text, fontSize: '28px', fontWeight: '700', margin: 0 }}>32.5</p>
+                  <p style={{ color: colors.textSecondary, fontSize: '12px', margin: '4px 0 0 0' }}>Hours Logged</p>
+                </div>
+                <div>
+                  <p style={{ color: colors.text, fontSize: '28px', fontWeight: '700', margin: 0 }}>4</p>
+                  <p style={{ color: colors.textSecondary, fontSize: '12px', margin: '4px 0 0 0' }}>Jobs Worked</p>
+                </div>
+                <div>
+                  <p style={{ color: '#4F6A41', fontSize: '28px', fontWeight: '700', margin: 0 }}>7.5</p>
+                  <p style={{ color: colors.textSecondary, fontSize: '12px', margin: '4px 0 0 0' }}>Remaining</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Today's Entry */}
+            <div style={{
+              backgroundColor: colors.backgroundSecondary,
+              borderRadius: '16px',
+              padding: '20px',
+              marginBottom: '20px',
+              border: `2px solid #D76A6A`
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '16px'
+              }}>
+                <span style={{ color: colors.text, fontSize: '16px', fontWeight: '600' }}>Today</span>
+                <span style={{ 
+                  backgroundColor: '#D76A6A', 
+                  color: '#fff', 
+                  padding: '4px 12px', 
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  Active
+                </span>
+              </div>
+              
+              <div style={{ marginBottom: '16px' }}>
+                <p style={{ color: colors.textSecondary, fontSize: '12px', margin: '0 0 4px 0' }}>Current Job</p>
+                <p style={{ color: colors.text, fontSize: '16px', fontWeight: '600', margin: 0 }}>Anderson Residence</p>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '20px' }}>
+                <div>
+                  <p style={{ color: colors.textSecondary, fontSize: '12px', margin: '0 0 4px 0' }}>Clock In</p>
+                  <p style={{ color: colors.text, fontSize: '14px', fontWeight: '600', margin: 0 }}>8:00 AM</p>
+                </div>
+                <div>
+                  <p style={{ color: colors.textSecondary, fontSize: '12px', margin: '0 0 4px 0' }}>Duration</p>
+                  <p style={{ color: '#D76A6A', fontSize: '14px', fontWeight: '600', margin: 0 }}>4h 32m</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Clock Out Button */}
+            <button
+              style={{
+                width: '100%',
+                padding: '16px',
+                backgroundColor: '#D76A6A',
+                border: 'none',
+                borderRadius: '12px',
+                color: '#fff',
+                fontSize: '16px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              ⏱️ Clock Out
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Work Order Screen */}
+      {activeTab === 'workorder' && (
+        <WorkOrderScreen
+          onClose={() => {
+            setActiveTab('jobs');
+            setWorkOrderJobId(undefined);
+          }}
+          jobId={workOrderJobId}
+          colors={colors}
+        />
+      )}
+
+      {/* Job Briefing Screen */}
+      {activeTab === 'briefing' && (
+        <JobBriefingScreen
+          onClose={() => {
+            setActiveTab('jobs');
+            setBriefingJobId(undefined);
+          }}
+          jobId={briefingJobId}
+        />
+      )}
+
       {/* Camera Screen */}
       <CameraCaptureScreen
         isOpen={isCameraOpen}
@@ -440,7 +676,7 @@ function ProfileMenuItem({ icon, label, colors, onClick }: {
 // Main export with ThemeProvider wrapper
 export function EmployeePortal({ onNavigate }: { onNavigate?: (page: string) => void }) {
   return (
-    <ThemeProvider defaultTheme="system">
+    <ThemeProvider defaultTheme="dark">
       <EmployeePortalInner onNavigate={onNavigate} />
     </ThemeProvider>
   );

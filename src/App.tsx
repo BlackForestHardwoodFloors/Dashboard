@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { FullDashboard } from './components/FullDashboard';
 import TimeLogsPage from './components/TimeLogsPage';
 import ClientsPage from './components/ClientsPage';
+import ClientDetailsPage from './components/ClientDetailsPage';
 import CalendarPage from './components/CalendarPage';
 import PhotosPage from './components/PhotosPage';
 import MessagesPage from './components/MessagesPage';
@@ -15,36 +17,32 @@ import ItemsPage from './components/ItemsPage';
 import VendorsPage from './components/VendorsPage';
 import SettingsPage from './components/SettingsPage';
 import AdminLoginPage from './components/AdminLoginPage';
-import EmployeeLoginPage from './components/EmployeeLoginPage';
-import CustomerLoginPage from './components/CustomerLoginPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EmployeePortal } from './components/employee-portal/EmployeePortal';
 import CommunicationHubPage from './components/CommunicationHubPage';
 import P4PGrowthPage from './components/P4PGrowthPage';
-
-
-// import { PortalPreview } from './components/PortalPreview'; // Uncomment if you have PortalPreview
+import AppRoutes from './components/AppRoutes';
 import './styles/globals.css';
 
-// Define all possible views
 type ViewType =
   | 'dashboard'
   | 'messages'
   | 'clients'
+  | 'client-details'
   | 'calendar'
   | 'communications'
   | 'quotes'
   | 'contracts'
   | 'work-orders'
   | 'jobs'
-  | 'job-card'
   | 'photos'
   | 'time-sheet'
   | 'items'
   | 'vendors'
   | 'reviews'
   | 'settings'
-  | 'p4p-growth';
+  | 'p4p-growth'
+  | 'employee-portal';
 
 type PortalType = 'admin' | 'employee' | 'customer';
 type LoginPageType = 'admin-login' | 'employee-login' | 'customer-login' | null;
@@ -59,199 +57,40 @@ interface User {
 }
 
 function AppContent() {
-  const { theme, toggleTheme, colors } = useTheme();
+  useTheme(); // keep theme hook active (even if not used directly)
+
   const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [user, setUser] = useState<User | null>({
+  const [user] = useState<User | null>({
     id: 1,
     firstName: 'Dev',
     lastName: 'User',
     email: 'dev@test.com',
     role: 'Admin',
-    portalType: 'admin',
+    portalType: 'admin'
   });
-  const [loginError, setLoginError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentPortal, setCurrentPortal] = useState<PortalType>('admin');
+
+  const [currentPortal] = useState<PortalType>('admin');
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
-  const [loginPage, setLoginPage] = useState<LoginPageType>(null);
+  const [loginPage] = useState<LoginPageType>(null);
+
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [showJobDrawer, setShowJobDrawer] = useState(false);
 
-  // Check if we're on preview route
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  /* ---------------- Navigation ---------------- */
 
-  // Simple toast notifications (used for "Saved" confirmations)
-  const [toast, setToast] = useState<{ message: string; kind?: 'success' | 'error' } | null>(null);
-
-  const showToast = (message: string, kind: 'success' | 'error' = 'success') => {
-    setToast({ message, kind });
-    // auto-hide after 3 seconds
-    window.setTimeout(() => setToast(null), 3000);
-  };
-
-  // Detect which login page to show based on URL
-  useEffect(() => {
-    const path = window.location.pathname;
-
-    // Check for preview mode first
-    if (path === '/preview' || path === '/preview/') {
-      setIsPreviewMode(true);
-      return;
-    }
-
-    if (path === '/admin/login' || path === '/admin/login/') {
-      setLoginPage('admin-login');
-    } else if (path === '/employee/login' || path === '/employee/login/') {
-      setLoginPage('employee-login');
-    } else if (path === '/customer/login' || path === '/customer/login/') {
-      setLoginPage('customer-login');
-    } else if (path === '/' || path === '') {
-      // Default to admin login
-      setLoginPage('admin-login');
-    }
-
-    // Check for existing session - DISABLED FOR DEV
-    // const storedUser = localStorage.getItem('user');
-    // const storedToken = localStorage.getItem('token');
-    // if (storedUser && storedToken) {
-    //   const parsedUser = JSON.parse(storedUser);
-    //   setUser(parsedUser);
-    //   setIsLoggedIn(true);
-    //   setCurrentPortal(parsedUser.portalType || 'admin');
-    // }
-  }, []);
-
-  // Listen for cross-component navigation requests (e.g., after "Save & Schedule Visit")
-  useEffect(() => {
-    const onNavigate = (e: Event) => {
-      const evt = e as CustomEvent<{ screen?: ViewType | string }>;
-      if (!evt.detail?.screen) return;
-
-      // We keep this intentionally strict so random values can't break the UI.
-      const screen = evt.detail.screen;
-      const allowed: ViewType[] = [
-        'dashboard',
-        'messages',
-        'clients',
-        'calendar',
-        'communications',
-        'quotes',
-        'contracts',
-        'work-orders',
-        'jobs',
-        'items',
-        'vendors',
-        'photos',
-        'time-sheet',
-        'settings',
-      ];
-
-      if (allowed.includes(screen as ViewType)) {
-        setCurrentView(screen as ViewType);
-      }
-    };
-
-    window.addEventListener('boardroom:navigate', onNavigate);
-    return () => window.removeEventListener('boardroom:navigate', onNavigate);
-  }, []);
-
-  // Store a pending "schedule visit" draft so the Calendar can open a prefilled appointment modal on date click.
-  useEffect(() => {
-    const onScheduleVisit = (e: Event) => {
-      const evt = e as CustomEvent<{ client?: any }>;
-      if (!evt.detail?.client) return;
-
-      try {
-        sessionStorage.setItem(
-          'boardroom_pending_visit',
-          JSON.stringify({
-            client: evt.detail.client,
-            createdAt: Date.now(),
-          })
-        );
-      } catch {
-        // ignore storage errors
-      }
-
-      // Give immediate feedback
-      showToast('Client saved — click a date on the calendar to schedule the visit.', 'success');
-
-      // Move to calendar view
-      setCurrentView('calendar');
-    };
-
-    window.addEventListener('boardroom:schedule-visit', onScheduleVisit);
-    return () => window.removeEventListener('boardroom:schedule-visit', onScheduleVisit);
-  }, []);
-
-  // If in preview mode, show the Portal Preview (uncomment if you have PortalPreview)
-  // if (isPreviewMode) {
-  //   return <PortalPreview />;
-  // }
-
-  // Handle login
-  const handleLogin = async (email: string, password: string, portalType: PortalType) => {
-    setIsLoading(true);
-    setLoginError('');
-
-    try {
-      const response = await fetch('http://localhost:3001/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.token) {
-        // Add portal type to user data
-        const userData = { ...data.user, portalType };
-
-        // Store token and user
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(userData));
-
-        setUser(userData);
-        setCurrentPortal(portalType);
-        setIsLoggedIn(true);
-        setLoginError('');
-
-        // Update URL without reload
-        window.history.pushState({}, '', '/');
-      } else {
-        setLoginError(data.message || 'Invalid email or password');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      setLoginError('Network error. Please check if the server is running.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle logout
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-    setIsLoggedIn(false);
-    setCurrentView('dashboard');
-
-    // Redirect based on portal type
-    if (currentPortal === 'employee') {
-      window.location.href = '/employee/login';
-    } else if (currentPortal === 'customer') {
-      window.location.href = '/customer/login';
-    } else {
-      window.location.href = '/admin/login';
-    }
-  };
-
-  // Enhanced navigation handler that maps page names to views
   const handleNavigate = (page: string) => {
-    // Handle JobCard navigation with ID (e.g., "JobCard/123")
+    // ✅ CLIENT DETAILS NAVIGATION
+    if (page.startsWith('Client/')) {
+      const clientId = parseInt(page.split('/')[1]);
+      if (!isNaN(clientId)) {
+        setSelectedClientId(clientId);
+        setCurrentView('client-details');
+        return;
+      }
+    }
+
+    // ✅ Job drawer
     if (page.startsWith('JobCard/')) {
       const jobId = parseInt(page.split('/')[1]);
       if (!isNaN(jobId)) {
@@ -261,318 +100,110 @@ function AppContent() {
       }
     }
 
-    // Handle ClientIntake navigation (e.g., "ClientIntake/123")
-    if (page.startsWith('ClientIntake/')) {
-      // Navigate to Clients page - the intake form can be opened there
-      setCurrentView('clients');
-      return;
-    }
-
-    // Handle preview navigation
-    if (page === 'Preview') {
-      window.location.href = '/preview';
-      return;
-    }
-
+    // ✅ Main map
+    // NOTE: includes aliases so existing buttons in other screens still work
     const pageMap: Record<string, ViewType> = {
+      // Primary labels
       Dashboard: 'dashboard',
       Messages: 'messages',
       Clients: 'clients',
-      'Clients/Contractors': 'clients',
-      'Clients/Locations': 'clients',
-      'Clients/Company': 'clients',
       Calendar: 'calendar',
-      Appointments: 'calendar',
       Quotes: 'quotes',
-      'Quotes/Draft': 'quotes',
-      'Quotes/Sent': 'quotes',
-      'Quotes/Accepted': 'quotes',
-      'Quotes/Rejected': 'quotes',
       Contracts: 'contracts',
-      'Contracts/Sent': 'contracts',
-      'Contracts/Signed': 'contracts',
       WorkOrders: 'work-orders',
-      'Work Orders': 'work-orders',
       Jobs: 'jobs',
-      'Jobs/ReadyToStart': 'jobs',
-      'Jobs/InProgress': 'jobs',
-      'Jobs/Completed': 'jobs',
       Photos: 'photos',
-      'Time Sheet': 'time-sheet',
-      'Time Sheet/WageRate': 'time-sheet',
-      'Time Sheet/GeneralTasks': 'time-sheet',
-      'Time Sheet/WeeklyReport': 'time-sheet',
-      'Time Sheet/Payroll': 'time-sheet',
-      Timesheet: 'time-sheet',
       Items: 'items',
       Vendors: 'vendors',
-      'Vendors/Contacts': 'vendors',
-      'Vendors/PriceList': 'vendors',
-      Reviews: 'reviews',
       Settings: 'settings',
-      'Settings/Employees': 'settings',
-      'Settings/Departments': 'settings',
-      'Settings/Roles': 'settings',
-      'Settings/Taxes': 'settings',
-      Client: 'clients',
       Communications: 'communications',
-      CommunicationHub: 'communications',
-      'Communication Hub': 'communications',
       'P4P Growth': 'p4p-growth',
-      P4PGrowth: 'p4p-growth',
+      'Employee Portal': 'employee-portal',
+
+      // ✅ Aliases (safe / non-breaking)
+      // MyJobScreen + other screens often call these
+      P4P: 'p4p-growth',
+      TimeSheet: 'time-sheet',
+      'Time Sheet': 'time-sheet',
+      'Time Logs': 'time-sheet',
+      PhotoPage: 'photos',
+      PhotosPage: 'photos'
     };
 
-    // Handle mode switching
-    if (page === 'Mode/Admin') {
-      const updatedUser = { ...user, portalType: 'admin' as const };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      setCurrentPortal('admin');
-      setCurrentView('dashboard');
-      return;
-    }
-
-    if (page === 'Mode/Employee') {
-      const updatedUser = { ...user, portalType: 'employee' as const };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      setCurrentPortal('employee');
-      setCurrentView('dashboard');
-      return;
-    }
-
-    if (page === 'Mode/Customer') {
-      const updatedUser = { ...user, portalType: 'customer' as const };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      setCurrentPortal('customer');
-      setCurrentView('dashboard');
-      return;
-    }
-
-    // Handle logout
-    if (page === 'Logout') {
-      handleLogout();
-      return;
-    }
-
-    const view = pageMap[page] || 'dashboard';
-    setCurrentView(view);
+    setCurrentView(pageMap[page] || 'dashboard');
   };
 
-  // Render the appropriate page based on currentView
+  /* ---------------- Admin Content ---------------- */
+
   const renderAdminContent = () => {
     switch (currentView) {
       case 'dashboard':
-        return <FullDashboard onNavigate={handleNavigate} onLogout={handleLogout} user={user} />;
-      case 'messages':
-        return <MessagesPage onNavigate={handleNavigate} />;
+        return <FullDashboard onNavigate={handleNavigate} onLogout={() => {}} user={user} />;
+
       case 'clients':
         return <ClientsPage onNavigate={handleNavigate} />;
+
+      case 'client-details':
+        return <ClientDetailsPage clientId={selectedClientId} onNavigate={handleNavigate} />;
+
       case 'calendar':
-        return <CalendarPage onNavigate={handleNavigate} hideOnsiteVisits={currentPortal === 'employee'} />;
+        return <CalendarPage onNavigate={handleNavigate} />;
+
+      case 'messages':
+        return <MessagesPage onNavigate={handleNavigate} />;
+
       case 'communications':
         return <CommunicationHubPage onNavigate={handleNavigate} />;
+
       case 'quotes':
         return <QuotesPage onNavigate={handleNavigate} />;
+
       case 'contracts':
         return <ContractsPage onNavigate={handleNavigate} />;
+
       case 'work-orders':
         return <WorkOrdersPage onNavigate={handleNavigate} />;
+
       case 'jobs':
         return <JobsPage onNavigate={handleNavigate} />;
+
       case 'photos':
         return <PhotosPage onNavigate={handleNavigate} />;
+
       case 'time-sheet':
         return <TimeLogsPage onNavigate={handleNavigate} />;
+
       case 'items':
         return <ItemsPage onNavigate={handleNavigate} />;
+
       case 'vendors':
         return <VendorsPage onNavigate={handleNavigate} />;
+
       case 'settings':
         return <SettingsPage onNavigate={handleNavigate} />;
+
       case 'p4p-growth':
         return <P4PGrowthPage />;
-      case 'reviews':
-        return (
-          <div style={{ marginLeft: '200px', padding: '24px', minHeight: '100vh', backgroundColor: colors.bgPrimary }}>
-            <h1 style={{ color: colors.textPrimary, fontSize: '28px', marginBottom: '8px' }}>Reviews</h1>
-            <p style={{ color: colors.textSecondary }}>Reviews page coming soon...</p>
-          </div>
-        );
+
+      case 'employee-portal':
+        // ✅ KEY FIX: pass admin navigation into employee portal so MyJobScreen can jump to admin PhotosPage
+        return <EmployeePortal onNavigate={handleNavigate} />;
+
       default:
-        return <FullDashboard onNavigate={handleNavigate} onLogout={handleLogout} user={user} />;
+        return <FullDashboard onNavigate={handleNavigate} onLogout={() => {}} user={user} />;
     }
   };
 
-  // Customer Portal Content
-  const renderCustomerContent = () => {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh',
-          backgroundColor: '#F5F7FA',
-          padding: '20px',
-          textAlign: 'center',
-        }}
-      >
-        <h1 style={{ color: '#333', marginBottom: '16px' }}>Welcome, {user?.firstName}!</h1>
-        <p style={{ color: '#666', fontSize: '16px', marginBottom: '24px' }}>Your Customer Portal is being set up.</p>
-        <button
-          onClick={handleLogout}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: '#2196F3',
-            color: '#FFFFFF',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            cursor: 'pointer',
-          }}
-        >
-          Log Out
-        </button>
-      </div>
-    );
-  };
+  /* ---------------- Render ---------------- */
 
-  // If not logged in, show appropriate login page
   if (!isLoggedIn) {
-    if (loginPage === 'employee-login') {
-      return <EmployeeLoginPage onLogin={(email, password) => handleLogin(email, password, 'employee')} error={loginError} isLoading={isLoading} />;
-    }
-
-    if (loginPage === 'customer-login') {
-      return <CustomerLoginPage onLogin={(email, password) => handleLogin(email, password, 'customer')} error={loginError} isLoading={isLoading} />;
-    }
-
-    // Default to admin login
-    return <AdminLoginPage onLogin={(email, password) => handleLogin(email, password, 'admin')} error={loginError} isLoading={isLoading} />;
+    return <AdminLoginPage onLogin={() => {}} error="" isLoading={false} />;
   }
 
-  // Check if admin is previewing employee portal
-  const isAdminPreviewingEmployee = currentPortal === 'employee' && user?.role === 'Admin';
-
-  // Check if employee is viewing a main page (Calendar, Photos, etc.)
-  const employeeViewingMainPage = currentPortal === 'employee' && ['calendar', 'photos', 'messages', 'time-sheet'].includes(currentView);
-
-  // Render employee main page with back button
-  const renderEmployeeMainPage = () => {
-    const pageComponent = (() => {
-      switch (currentView) {
-        case 'calendar':
-          return <CalendarPage onNavigate={handleNavigate} hideOnsiteVisits={currentPortal === 'employee'} />;
-        case 'photos':
-          return <PhotosPage onNavigate={handleNavigate} hideSidebar={true} />;
-        case 'messages':
-          return <MessagesPage onNavigate={handleNavigate} />;
-        case 'time-sheet':
-          return <TimeLogsPage onNavigate={handleNavigate} />;
-        default:
-          return null;
-      }
-    })();
-
-    return (
-      <div>
-        {toast && (
-          <div
-            style={{
-              position: 'fixed',
-              top: 16,
-              right: 16,
-              zIndex: 10000,
-              padding: '12px 14px',
-              borderRadius: 12,
-              border: '1px solid #2A2A2A',
-              background: toast.kind === 'error' ? '#2b0b0b' : '#0b2b12',
-              color: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
-              maxWidth: 360,
-            }}
-            role="status"
-            aria-live="polite"
-          >
-            {toast.message}
-          </div>
-        )}
-
-        {/* Back to Employee Portal button */}
-        <button
-          onClick={() => setCurrentView('dashboard')}
-          style={{
-            position: 'fixed',
-            top: '10px',
-            left: '10px',
-            zIndex: 9999,
-            padding: '10px 20px',
-            backgroundColor: '#4F6A41',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-          }}
-        >
-          ← Back to Portal
-        </button>
-        {pageComponent}
-      </div>
-    );
-  };
-
   return (
-    <main role="main" aria-label={`${currentPortal} Portal content`}>
-      {currentPortal === 'customer' ? (
-        renderCustomerContent()
-      ) : currentPortal === 'employee' ? (
-        employeeViewingMainPage ? (
-          renderEmployeeMainPage()
-        ) : (
-          <>
-            {/* Back to Admin button for admin preview */}
-            {isAdminPreviewingEmployee && (
-              <button
-                onClick={() => {
-                  const updatedUser = { ...user, portalType: 'admin' as const };
-                  localStorage.setItem('user', JSON.stringify(updatedUser));
-                  setUser(updatedUser);
-                  setCurrentPortal('admin');
-                  setCurrentView('dashboard');
-                }}
-                style={{
-                  position: 'fixed',
-                  top: '10px',
-                  right: '10px',
-                  zIndex: 9999,
-                  padding: '10px 20px',
-                  backgroundColor: '#D4A024',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                }}
-              >
-                ← Back to Admin
-              </button>
-            )}
-            <EmployeePortal onNavigate={handleNavigate} />
-          </>
-        )
-      ) : (
-        renderAdminContent()
-      )}
+    <main>
+      {currentPortal === 'customer' ? <AppRoutes /> : renderAdminContent()}
 
-      {/* Job Card Drawer - shown when clicking calendar appointments */}
       <JobCardDrawer
         isOpen={showJobDrawer}
         appointmentId={selectedJobId}
@@ -581,11 +212,6 @@ function AppContent() {
           setSelectedJobId(null);
         }}
         onNavigate={handleNavigate}
-        onDataUpdate={() => {
-          // Trigger a re-render by briefly changing view and back
-          // This will refresh the calendar data
-          window.dispatchEvent(new CustomEvent('appointmentUpdated'));
-        }}
       />
     </main>
   );
@@ -593,10 +219,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
-    </ErrorBoundary>
+    <BrowserRouter>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </ErrorBoundary>
+    </BrowserRouter>
   );
 }
