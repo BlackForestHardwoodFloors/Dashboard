@@ -26,34 +26,93 @@ declare global {
 
 // ZIP to Region mapping for auto-fill
 const ZIP_TO_REGION: { [key: string]: string } = {
-  // Spokane
-  '99201': 'Spokane', '99202': 'Spokane', '99203': 'Spokane', '99204': 'Spokane', '99205': 'Spokane',
-  '99207': 'Spokane', '99208': 'Spokane', '99210': 'Spokane', '99211': 'Spokane', '99213': 'Spokane',
-  '99214': 'Spokane', '99217': 'Spokane', '99218': 'Spokane', '99219': 'Spokane', '99220': 'Spokane',
-  '99223': 'Spokane', '99224': 'Spokane', '99228': 'Spokane',
-  // Spokane Valley
-  '99206': 'Valley', '99212': 'Valley', '99216': 'Valley', '99037': 'Valley',
+
+  // -------------------------
+  // Spokane – Neighborhood Regions
+  // -------------------------
+  '99201': 'Downtown',
+  '99202': 'East Central',
+  '99203': 'South Hill',
+  '99204': 'Lower South Hill',
+  '99205': 'North Spokane',
+  '99207': 'Northeast Spokane',
+  '99208': 'Five Mile / Indian Trail',
+  '99210': 'Downtown',
+  '99211': 'South Hill',
+  '99213': 'Lincoln Heights',
+  '99214': 'South Hill',
+  '99217': 'Hillyard',
+  '99218': 'North Spokane',
+  '99219': 'West Plains',
+  '99220': 'Downtown',
+  '99223': 'South Hill',
+  '99224': 'West Plains',
+  '99228': 'North Spokane',
+
+  // -------------------------
+  // Spokane Valley – Sub Regions
+  // -------------------------
+  '99206': 'West Valley',
+  '99212': 'West Valley',
+  '99216': 'Central Valley',
+  '99037': 'South Valley',
+
+  // -------------------------
   // Liberty Lake
+  // -------------------------
   '99019': 'Liberty Lake',
+
+  // -------------------------
   // Cheney
+  // -------------------------
   '99004': 'Cheney',
+
+  // -------------------------
   // Airway Heights
+  // -------------------------
   '99001': 'Airway Heights',
+
+  // -------------------------
   // Medical Lake
+  // -------------------------
   '99022': 'Medical Lake',
+
+  // -------------------------
   // Deer Park
+  // -------------------------
   '99006': 'Deer Park',
+
+  // -------------------------
   // Mead
+  // -------------------------
   '99021': 'Mead',
+
+  // -------------------------
   // Nine Mile Falls
+  // -------------------------
   '99026': 'Nine Mile Falls',
+
+  // -------------------------
   // Post Falls
-  '83854': 'Post Falls', '83877': 'Post Falls',
+  // -------------------------
+  '83854': 'Post Falls',
+  '83877': 'Post Falls',
+
+  // -------------------------
   // Coeur d'Alene
-  '83814': 'CDA', '83815': 'CDA', '83816': 'CDA',
+  // -------------------------
+  '83814': 'CDA',
+  '83815': 'CDA',
+  '83816': 'CDA',
+
+  // -------------------------
   // Hayden
+  // -------------------------
   '83835': 'Hayden',
+
+  // -------------------------
   // Rathdrum
+  // -------------------------
   '83858': 'Rathdrum',
 };
 
