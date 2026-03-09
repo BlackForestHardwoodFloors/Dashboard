@@ -1,16 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  X,
-  Plus,
-  Trash2,
-  Send,
-  Save,
-  Check,
-  PenTool,
-  MessageSquare,
-  Mail,
-  Monitor,
-} from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, Plus, Trash2, Send, Save, Check } from 'lucide-react';
 import { useTheme } from '../ThemeProvider';
 
 export interface StainSignOffPayload {
@@ -18,305 +7,198 @@ export interface StainSignOffPayload {
   stainChoices: { color: string; sheen: string }[];
   typedSignature: string;
   agreedToTerms: boolean;
-  sendVia?: {
-    text: boolean;
-    email: boolean;
-    portal: boolean;
-  };
+  notes: string;
 }
 
 interface StainSignOffModalProps {
   isOpen: boolean;
   onClose: () => void;
-  jobName: string;
-  colors?: any; // you pass `colors={colors}` from parent already in your screens
-  // Optional callbacks if you want to wire this to API later
-  onSave?: (payload: StainSignOffPayload) => void;
-  onSend?: (payload: StainSignOffPayload) => void;
+  clientName: string;
+  initialStainColor?: string;
+  onSubmit: (payload: StainSignOffPayload) => void;
 }
 
-type SignatureMethod = 'draw' | 'type';
+const DURASEAL_STAIN_COLORS = [
+  'Aged Barrel',
+  'Antique Brown',
+  'Briar Smoke',
+  'Chestnut',
+  'Classic Gray',
+  'Coffee Brown',
+  'Country White',
+  'Dark Walnut',
+  'Ebony',
+  'English Chestnut',
+  'Espresso',
+  'Early American',
+  'Fruitwood',
+  'Golden Brown',
+  'Graphite',
+  'Gunstock',
+  'Heritage Brown',
+  'Ipswich Pine',
+  'Jacobean',
+  'Medium Brown',
+  'Neutral',
+  'Nutmeg',
+  'Provincial',
+  'Red Mahogany',
+  'Rosewood',
+  'Sedona Red',
+  'Silvered Gray',
+  'Special Walnut',
+  'Spice Brown',
+  'True Black',
+  'Warm Gray',
+  'Weathered Oak',
+];
+
+const SHEEN_OPTIONS = [
+  '10%',
+  '25%',
+  '30%',
+  '40%',
+  '50%',
+  '60%',
+  '75%',
+  '90%',
+  '100%',
+];
 
 export function StainSignOffModal({
   isOpen,
   onClose,
-  jobName,
-  colors: passedColors,
-  onSave,
-  onSend,
+  clientName,
+  initialStainColor,
+  onSubmit,
 }: StainSignOffModalProps) {
-  const theme = useTheme();
-  const colors = passedColors || theme.colors;
+  const { colors } = useTheme();
 
-  // ✅ Force Stain Sign Off to match the purple Stain Sign Off button tile
-  // (Theme primary is green in your app, so we do NOT use theme.primary here.)
-  const PRIMARY_ACTION = '#8B5CF6';
+  const defaultColor = initialStainColor || '';
 
-  const hexToRgba = (hex: string, alpha: number) => {
-    try {
-      const clean = hex.replace('#', '').trim();
-      const full =
-        clean.length === 3
-          ? clean
-              .split('')
-              .map((c) => c + c)
-              .join('')
-          : clean;
-
-      const r = parseInt(full.slice(0, 2), 16);
-      const g = parseInt(full.slice(2, 4), 16);
-      const b = parseInt(full.slice(4, 6), 16);
-
-      if ([r, g, b].some((n) => Number.isNaN(n))) return `rgba(0,0,0,${alpha})`;
-      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-    } catch {
-      return `rgba(0,0,0,${alpha})`;
-    }
-  };
-
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-
-  // Form state
-  const [approvedDate, setApprovedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [stainChoices, setStainChoices] = useState<{ id: string; color: string; sheen: string }[]>([
-    { id: '1', color: '', sheen: '' },
+  const [stainChoices, setStainChoices] = useState([
+    { color: defaultColor, sheen: '25%' },
   ]);
-
-  const [signatureMethod, setSignatureMethod] = useState<SignatureMethod>('draw');
   const [typedSignature, setTypedSignature] = useState('');
-  const [hasSignature, setHasSignature] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-
-  // ✅ Send options checkboxes
+  const [notes, setNotes] = useState('');
+  const [approvedDate] = useState(new Date().toISOString().split('T')[0]);
   const [sendViaText, setSendViaText] = useState(false);
   const [sendViaEmail, setSendViaEmail] = useState(false);
   const [sendViaPortal, setSendViaPortal] = useState(true);
-  const hasAnySendVia = sendViaText || sendViaEmail || sendViaPortal;
 
-  const isSignatureComplete = () => {
-    if (signatureMethod === 'type') return typedSignature.trim().length > 0;
-    return hasSignature;
+  const stainColorOptions = useMemo(() => {
+    if (!defaultColor || DURASEAL_STAIN_COLORS.includes(defaultColor)) {
+      return DURASEAL_STAIN_COLORS;
+    }
+
+    return [defaultColor, ...DURASEAL_STAIN_COLORS];
+  }, [defaultColor]);
+
+  const fieldStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '14px 16px',
+    minHeight: 48,
+    borderRadius: 12,
+    border: '1px solid rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    color: '#F5F7FB',
+    fontSize: 15,
+    outline: 'none',
+    boxSizing: 'border-box',
   };
 
-  // Init canvas when opened + draw method
-  useEffect(() => {
-    if (!isOpen) return;
+  const labelStyle: React.CSSProperties = {
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.55)',
+    marginBottom: 8,
+    display: 'block',
+  };
 
-    if (canvasRef.current && signatureMethod === 'draw') {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // clear
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // signature line
-      ctx.strokeStyle = '#D1D5DB';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(20, canvas.height - 30);
-      ctx.lineTo(canvas.width - 20, canvas.height - 30);
-      ctx.stroke();
-
-      // ink settings
-      ctx.strokeStyle = '#111827';
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-    }
-  }, [isOpen, signatureMethod]);
+  const helperTextStyle: React.CSSProperties = {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.60)',
+    marginTop: 6,
+  };
 
   if (!isOpen) return null;
 
-  const addChoice = () => {
-    setStainChoices((prev) => [
-      ...prev,
-      { id: Date.now().toString(), color: '', sheen: '' },
-    ]);
+  const addStainChoice = () => {
+    setStainChoices([...stainChoices, { color: '', sheen: '25%' }]);
   };
 
-  const removeChoice = (id: string) => {
-    setStainChoices((prev) => (prev.length > 1 ? prev.filter((c) => c.id !== id) : prev));
+  const removeStainChoice = (index: number) => {
+    if (stainChoices.length === 1) return;
+
+    const copy = [...stainChoices];
+    copy.splice(index, 1);
+    setStainChoices(copy);
   };
 
-  const updateChoice = (id: string, field: 'color' | 'sheen', value: string) => {
-    setStainChoices((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
+  const updateStainChoice = (
+    index: number,
+    field: 'color' | 'sheen',
+    value: string
+  ) => {
+    const copy = [...stainChoices];
+    copy[index] = {
+      ...copy[index],
+      [field]: value,
+    };
+    setStainChoices(copy);
   };
 
-  // Canvas draw handlers
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    setHasSignature(true);
-  };
-
-  const stopDrawing = () => setIsDrawing(false);
-
-  const clearSignature = () => {
-    if (signatureMethod === 'draw') {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.strokeStyle = '#D1D5DB';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(20, canvas.height - 30);
-      ctx.lineTo(canvas.width - 20, canvas.height - 30);
-      ctx.stroke();
-
-      ctx.strokeStyle = '#111827';
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-    } else {
-      setTypedSignature('');
-    }
-    setHasSignature(false);
-  };
-
-  const buildPayload = (): StainSignOffPayload => ({
-    approvedDate,
-    stainChoices: stainChoices.map(({ color, sheen }) => ({ color, sheen })),
-    typedSignature: signatureMethod === 'type' ? typedSignature : '',
-    agreedToTerms,
-    sendVia: { text: sendViaText, email: sendViaEmail, portal: sendViaPortal },
-  });
-
-  const handleSave = () => {
-    const payload = buildPayload();
-    console.log('Stain Sign Off Saved:', payload);
-    onSave?.(payload);
-    onClose();
-  };
-
-  const handleSend = () => {
-    if (!hasAnySendVia) return;
-
-    const payload = buildPayload();
-    console.log('Sending Stain Sign Off via:', payload.sendVia, payload);
-
-    onSend?.(payload);
-    // Keep your existing behavior: typically you’d save + close
-    onSave?.(payload);
-    onClose();
-  };
-
-  const SendOption = ({
-    checked,
-    onChange,
-    label,
-    icon,
-    hint,
-  }: {
-    checked: boolean;
-    onChange: (v: boolean) => void;
-    label: string;
-    icon: React.ReactNode;
-    hint: string;
-  }) => (
-    <label
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '10px',
-        padding: '12px',
-        borderRadius: '10px',
-        cursor: 'pointer',
-        backgroundColor: checked ? hexToRgba(PRIMARY_ACTION, 0.08) : colors.background,
-        border: `1px solid ${checked ? PRIMARY_ACTION : colors.border}`,
-      }}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        style={{
-          width: '20px',
-          height: '20px',
-          accentColor: PRIMARY_ACTION,
-          cursor: 'pointer',
-          marginTop: '2px',
-        }}
-      />
-      <div style={{ display: 'flex', gap: '10px', flex: 1 }}>
-        <div
-          style={{
-            width: '34px',
-            height: '34px',
-            borderRadius: '10px',
-            backgroundColor: checked ? PRIMARY_ACTION : 'rgba(255,255,255,0.06)',
-            border: checked ? 'none' : `1px solid ${colors.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          {icon}
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ color: colors.text, fontSize: '14px', fontWeight: 900, lineHeight: 1.2 }}>
-            {label}
-          </div>
-          <div style={{ color: colors.textSecondary, fontSize: '12px', marginTop: '4px', lineHeight: 1.3 }}>
-            {hint}
-          </div>
-        </div>
-      </div>
-    </label>
+  const hasValidStainChoices = stainChoices.every(
+    (choice) => choice.color.trim().length > 0 && choice.sheen.trim().length > 0
   );
+
+  const canSubmit =
+    typedSignature.trim().length > 0 &&
+    agreedToTerms &&
+    hasValidStainChoices;
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+
+    onSubmit({
+      approvedDate,
+      stainChoices,
+      typedSignature: typedSignature.trim(),
+      agreedToTerms,
+      notes: notes.trim(),
+    });
+
+    onClose();
+  };
 
   return (
     <div
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0,0,0,0.9)',
+        backgroundColor: 'rgba(0,0,0,0.75)',
         zIndex: 9999,
         display: 'flex',
-        alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
+        alignItems: 'center',
+        padding: 20,
       }}
     >
       <div
         style={{
-          backgroundColor: colors.backgroundSecondary,
-          borderRadius: '16px',
           width: '100%',
-          maxWidth: '620px',
+          maxWidth: 620,
           maxHeight: '90vh',
+          background:
+            colors.backgroundSecondary ||
+            'linear-gradient(180deg, #1C1C1F 0%, #17171A 100%)',
+          borderRadius: 18,
           overflow: 'hidden',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
+          border: '1px solid rgba(255,255,255,0.06)',
           display: 'flex',
           flexDirection: 'column',
         }}
@@ -324,600 +206,567 @@ export function StainSignOffModal({
         {/* Header */}
         <div
           style={{
-            padding: '20px',
-            borderBottom: `1px solid ${colors.border}`,
+            background: 'linear-gradient(90deg, #8B2BC7 0%, #8F56FF 100%)',
+            color: '#fff',
+            padding: '18px 20px',
             display: 'flex',
-            alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: PRIMARY_ACTION,
+            alignItems: 'flex-start',
+            flexShrink: 0,
           }}
         >
           <div>
-            <h2 style={{ color: '#fff', fontSize: '20px', fontWeight: 950, margin: 0 }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 18,
+                fontWeight: 800,
+                lineHeight: 1.2,
+              }}
+            >
               Stain Sign Off Form
             </h2>
-
-            {/* ✅ Client name under the header */}
-            <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '12px', margin: '4px 0 0 0', fontWeight: 700 }}>
-              {jobName}
+            <p
+              style={{
+                margin: '6px 0 0 0',
+                opacity: 0.9,
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
+              {clientName}
             </p>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
             style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '999px',
-              backgroundColor: 'rgba(255,255,255,0.22)',
-              border: '1px solid rgba(255,255,255,0.25)',
+              background: 'rgba(255,255,255,0.18)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: '50%',
+              width: 40,
+              height: 40,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
-            <X size={20} color="#fff" />
+            <X color="#fff" />
           </button>
         </div>
 
-        {/* Body */}
-        <div style={{ flex: 1, overflow: 'auto', padding: '20px' }}>
-          {/* Important Stain Color Notice */}
+        {/* Scrollable Content */}
+        <div
+          style={{
+            padding: 20,
+            overflowY: 'auto',
+          }}
+        >
+          {/* Notice Card */}
           <div
             style={{
-              backgroundColor: colors.background,
-              borderRadius: '14px',
-              border: `1px solid ${colors.border}`,
-              padding: '16px',
-              marginBottom: '18px',
-            }}
-          >
-            <div style={{ color: colors.text, fontWeight: 950, fontSize: '14px' }}>
-              Important Stain Color Notice
-            </div>
-            <div style={{ color: colors.text, fontSize: '13px', marginTop: '10px', lineHeight: 1.45, fontWeight: 650 }}>
-              Stain applied to a hardwood floor is permanent. Hardwood is a natural product, and variations in wood species and
-              grain patterns will affect how stain color appears.
-            </div>
-            <div style={{ color: colors.text, fontSize: '13px', marginTop: '10px', lineHeight: 1.45, fontWeight: 650 }}>
-              Please be absolutely sure of the stain color you have selected. Once stain has been applied, the color cannot be
-              changed without re-sanding the floor. Re-sanding requires starting over and will result in additional cost.
-            </div>
-            <div style={{ color: colors.text, fontSize: '13px', marginTop: '10px', lineHeight: 1.45, fontWeight: 650 }}>
-              Our stain experts are happy to work with you to select the right color.
-              <br />
-              Up to 45 minutes of stain consultation time is included.
-              <br />
-              If additional time is needed, it is billed at $75 per half hour (time is billed in half-hour increments, although less time may be required).
-            </div>
-          </div>
-
-          {/* Approved Date */}
-          <div style={{ marginBottom: '18px' }}>
-            <label
-              style={{
-                color: colors.textSecondary,
-                fontSize: '11px',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                display: 'block',
-                marginBottom: '8px',
-              }}
-            >
-              Approval Date
-            </label>
-            <input
-              type="date"
-              value={approvedDate}
-              onChange={(e) => setApprovedDate(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '12px',
-                border: `1px solid ${colors.border}`,
-                backgroundColor: colors.background,
-                color: colors.text,
-                fontSize: '15px',
-                fontWeight: 800,
-              }}
-            />
-          </div>
-
-          {/* Stain Choices */}
-          <div style={{ marginBottom: '18px' }}>
-            <div style={{ color: colors.text, fontSize: '14px', fontWeight: 950, marginBottom: '10px' }}>
-              Selected Stain(s)
-            </div>
-
-            {stainChoices.map((choice) => (
-              <div
-                key={choice.id}
-                style={{
-                  backgroundColor: colors.background,
-                  borderRadius: '14px',
-                  border: `1px solid ${colors.border}`,
-                  padding: '12px',
-                  marginBottom: '10px',
-                }}
-              >
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ color: colors.textSecondary, fontSize: '11px', fontWeight: 800, textTransform: 'uppercase' }}>
-                      Color
-                    </label>
-                    <input
-                      value={choice.color}
-                      onChange={(e) => updateChoice(choice.id, 'color', e.target.value)}
-                      placeholder="e.g., Jacobean"
-                      style={{
-                        width: '100%',
-                        marginTop: '6px',
-                        padding: '12px',
-                        borderRadius: '12px',
-                        border: `1px solid ${colors.border}`,
-                        backgroundColor: colors.backgroundSecondary,
-                        color: colors.text,
-                        fontSize: '14px',
-                        fontWeight: 800,
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ flex: 1 }}>
-                    <label style={{ color: colors.textSecondary, fontSize: '11px', fontWeight: 800, textTransform: 'uppercase' }}>
-                      Sheen
-                    </label>
-                    <input
-                      value={choice.sheen}
-                      onChange={(e) => updateChoice(choice.id, 'sheen', e.target.value)}
-                      placeholder="e.g., Satin"
-                      style={{
-                        width: '100%',
-                        marginTop: '6px',
-                        padding: '12px',
-                        borderRadius: '12px',
-                        border: `1px solid ${colors.border}`,
-                        backgroundColor: colors.backgroundSecondary,
-                        color: colors.text,
-                        fontSize: '14px',
-                        fontWeight: 800,
-                      }}
-                    />
-                  </div>
-
-                  {stainChoices.length > 1 && (
-                    <button
-                      onClick={() => removeChoice(choice.id)}
-                      style={{
-                        width: '46px',
-                        height: '46px',
-                        borderRadius: '14px',
-                        backgroundColor: 'rgba(220, 38, 38, 0.18)',
-                        border: '1px solid rgba(220, 38, 38, 0.35)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginTop: '18px',
-                      }}
-                      aria-label="Remove stain choice"
-                      title="Remove stain choice"
-                    >
-                      <Trash2 size={20} color="#DC2626" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            <button
-              onClick={addChoice}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '12px',
-                border: `1px dashed ${colors.border}`,
-                backgroundColor: 'transparent',
-                color: colors.text,
-                fontSize: '14px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-              }}
-            >
-              <Plus size={18} />
-              Add another stain
-            </button>
-          </div>
-
-          {/* Send Options */}
-          <div
-            style={{
-              marginBottom: '18px',
-              backgroundColor: colors.background,
-              borderRadius: '14px',
-              padding: '16px',
-              border: `1px solid ${colors.border}`,
-            }}
-          >
-            <div style={{ color: colors.text, fontSize: '14px', fontWeight: 950 }}>
-              Send to client via
-            </div>
-            <div style={{ color: colors.textSecondary, fontSize: '12px', marginTop: '6px' }}>
-              Choose how the client will receive the sign off request.
-            </div>
-
-            <div style={{ display: 'grid', gap: '10px', marginTop: '12px' }}>
-              <SendOption
-                checked={sendViaText}
-                onChange={setSendViaText}
-                label="Text (SMS)"
-                hint="Send a link by text message."
-                icon={<MessageSquare size={18} color={sendViaText ? '#fff' : colors.text} />}
-              />
-              <SendOption
-                checked={sendViaEmail}
-                onChange={setSendViaEmail}
-                label="Email"
-                hint="Email the sign off for approval."
-                icon={<Mail size={18} color={sendViaEmail ? '#fff' : colors.text} />}
-              />
-              <SendOption
-                checked={sendViaPortal}
-                onChange={setSendViaPortal}
-                label="Client Portal"
-                hint="Publish in the portal for approval."
-                icon={<Monitor size={18} color={sendViaPortal ? '#fff' : colors.text} />}
-              />
-            </div>
-
-            {!hasAnySendVia && (
-              <div
-                style={{
-                  marginTop: '12px',
-                  padding: '10px 12px',
-                  borderRadius: '12px',
-                  backgroundColor: 'rgba(220, 38, 38, 0.12)',
-                  border: '1px solid rgba(220, 38, 38, 0.25)',
-                  color: '#DC2626',
-                  fontSize: '12px',
-                  fontWeight: 900,
-                }}
-              >
-                Select at least one delivery method to enable “Send to Client”.
-              </div>
-            )}
-          </div>
-
-          {/* Signature section */}
-          <div
-            style={{
-              marginBottom: '18px',
-              backgroundColor: '#F7F9FC',
-              borderRadius: '14px',
-              padding: '18px',
-              border: '1px solid #E1E5EB',
+              background: 'rgba(0,0,0,0.28)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 16,
+              padding: 18,
+              marginBottom: 18,
             }}
           >
             <div
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                marginBottom: '14px',
-                paddingBottom: '12px',
-                borderBottom: '1px solid #E1E5EB',
+                color: '#FFFFFF',
+                fontSize: 16,
+                fontWeight: 800,
+                marginBottom: 12,
               }}
             >
+              Important Stain Color Notice
+            </div>
+
+            <div
+              style={{
+                color: 'rgba(255,255,255,0.88)',
+                fontSize: 14,
+                lineHeight: 1.6,
+              }}
+            >
+              <p style={{ margin: '0 0 12px 0' }}>
+                Stain applied to a hardwood floor is permanent. Hardwood is a
+                natural product, and variations in wood species and grain
+                patterns will affect how stain color appears.
+              </p>
+
+              <p style={{ margin: '0 0 12px 0' }}>
+                Please be absolutely sure of the stain color you have selected.
+                Once stain has been applied, the color cannot be changed without
+                re-sanding the floor. Re-sanding requires starting over and will
+                result in additional cost.
+              </p>
+
+              <p style={{ margin: 0 }}>
+                Our stain experts are happy to work with you to select the right
+                color. Up to 45 minutes of stain consultation time is included.
+                If additional time is needed, it is billed at $75 per half hour
+                (time is billed in half-hour increments, although less time may
+                be required).
+              </p>
+            </div>
+          </div>
+
+          {/* Approval Date */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Approval Date</label>
+            <input
+              type="date"
+              value={approvedDate}
+              readOnly
+              style={fieldStyle}
+            />
+          </div>
+
+          {/* Stain Choices */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Selected Stain(s)</label>
+
+            {stainChoices.map((choice, i) => (
               <div
+                key={i}
                 style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '10px',
-                  backgroundColor: PRIMARY_ACTION,
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  gap: 10,
+                  marginBottom: 10,
+                  alignItems: 'stretch',
                 }}
               >
-                <PenTool size={18} color="#fff" />
-              </div>
-              <div>
-                <div style={{ color: '#111827', fontSize: '16px', fontWeight: 950 }}>
-                  Sign Document
-                </div>
-                <div style={{ color: '#374151', fontSize: '12px', marginTop: '2px', fontWeight: 650 }}>
-                  Please sign below to confirm your stain selection
-                </div>
-              </div>
-            </div>
-
-            {/* Method tabs */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-              <button
-                onClick={() => setSignatureMethod('draw')}
-                style={{
-                  flex: 1,
-                  padding: '10px 16px',
-                  backgroundColor: signatureMethod === 'draw' ? PRIMARY_ACTION : '#fff',
-                  border: `1px solid ${signatureMethod === 'draw' ? PRIMARY_ACTION : '#D1D5DB'}`,
-                  borderRadius: '12px',
-                  color: signatureMethod === 'draw' ? '#fff' : '#111827',
-                  fontSize: '14px',
-                  fontWeight: 900,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                }}
-              >
-                <PenTool size={16} />
-                Draw
-              </button>
-              <button
-                onClick={() => setSignatureMethod('type')}
-                style={{
-                  flex: 1,
-                  padding: '10px 16px',
-                  backgroundColor: signatureMethod === 'type' ? PRIMARY_ACTION : '#fff',
-                  border: `1px solid ${signatureMethod === 'type' ? PRIMARY_ACTION : '#D1D5DB'}`,
-                  borderRadius: '12px',
-                  color: signatureMethod === 'type' ? '#fff' : '#111827',
-                  fontSize: '14px',
-                  fontWeight: 900,
-                  cursor: 'pointer',
-                }}
-              >
-                ✎ Type
-              </button>
-            </div>
-
-            {/* Draw */}
-            {signatureMethod === 'draw' && (
-              <div style={{ position: 'relative' }}>
-                <div
-                  style={{
-                    border: '2px solid #D1D5DB',
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    backgroundColor: '#FFFFFF',
-                    position: 'relative',
-                  }}
-                >
-                  {!hasSignature && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: '18px',
-                        bottom: '34px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        color: '#6B7280',
-                        fontSize: '14px',
-                        pointerEvents: 'none',
-                        zIndex: 1,
-                        fontWeight: 800,
-                      }}
-                    >
-                      <span style={{ fontSize: '18px', color: PRIMARY_ACTION }}>✕</span>
-                      <span>Sign here</span>
-                    </div>
-                  )}
-
-                  <canvas
-                    ref={canvasRef}
-                    width={520}
-                    height={150}
+                <div style={{ flex: 2 }}>
+                  <div style={{ ...labelStyle, marginBottom: 6 }}>Color</div>
+                  <input
+                    list={`duraseal-colors-${i}`}
+                    value={choice.color}
+                    onChange={(e) =>
+                      updateStainChoice(i, 'color', e.target.value)
+                    }
+                    placeholder="e.g., Jacobean"
                     style={{
+                      ...fieldStyle,
                       width: '100%',
-                      height: '150px',
-                      cursor: 'crosshair',
-                      touchAction: 'none',
                     }}
-                    onMouseDown={startDrawing}
-                    onMouseMove={draw}
-                    onMouseUp={stopDrawing}
-                    onMouseLeave={stopDrawing}
-                    onTouchStart={startDrawing}
-                    onTouchMove={draw}
-                    onTouchEnd={stopDrawing}
                   />
+                  <datalist id={`duraseal-colors-${i}`}>
+                    {stainColorOptions.map((color) => (
+                      <option key={color} value={color} />
+                    ))}
+                  </datalist>
                 </div>
 
-                {hasSignature && (
-                  <button
-                    onClick={clearSignature}
+                <div style={{ flex: 1 }}>
+                  <div style={{ ...labelStyle, marginBottom: 6 }}>Sheen</div>
+                  <select
+                    value={choice.sheen}
+                    onChange={(e) =>
+                      updateStainChoice(i, 'sheen', e.target.value)
+                    }
                     style={{
-                      position: 'absolute',
-                      top: '8px',
-                      right: '8px',
-                      padding: '6px 12px',
-                      backgroundColor: '#fff',
-                      border: '1px solid #D1D5DB',
-                      borderRadius: '10px',
-                      color: '#111827',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      fontWeight: 900,
+                      ...fieldStyle,
+                      width: '100%',
+                      appearance: 'none',
+                      WebkitAppearance: 'none',
+                      MozAppearance: 'none',
+                      backgroundImage:
+                        "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.75)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 14px center',
+                      paddingRight: 42,
                     }}
                   >
-                    Clear
-                  </button>
-                )}
-              </div>
-            )}
+                    {SHEEN_OPTIONS.map((sheen) => (
+                      <option key={sheen} value={sheen} style={{ color: '#111' }}>
+                        {sheen}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            {/* Type */}
-            {signatureMethod === 'type' && (
-              <div>
-                <input
-                  type="text"
-                  value={typedSignature}
-                  onChange={(e) => {
-                    setTypedSignature(e.target.value);
-                    setHasSignature(e.target.value.trim().length > 0);
-                  }}
-                  placeholder="Type your full name"
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    borderRadius: '12px',
-                    border: '2px solid #D1D5DB',
-                    backgroundColor: '#fff',
-                    color: '#111827',
-                    fontSize: '16px',
-                    fontWeight: 900,
-                    marginBottom: '12px',
-                  }}
-                />
-
-                {typedSignature && (
+                {stainChoices.length > 1 && (
                   <div
                     style={{
-                      padding: '18px',
-                      backgroundColor: '#fff',
-                      border: '2px solid #D1D5DB',
-                      borderRadius: '12px',
-                      textAlign: 'center',
+                      display: 'flex',
+                      alignItems: 'flex-end',
                     }}
                   >
-                    <div
+                    <button
+                      type="button"
+                      onClick={() => removeStainChoice(i)}
                       style={{
-                        color: '#111827',
-                        fontSize: '28px',
-                        fontFamily: "'Brush Script MT', 'Dancing Script', cursive",
-                        fontStyle: 'italic',
-                        margin: 0,
-                        borderBottom: '1px solid #9CA3AF',
-                        paddingBottom: '8px',
-                        display: 'inline-block',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                        background: 'rgba(255,255,255,0.03)',
+                        borderRadius: 12,
+                        width: 48,
+                        height: 48,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#F5F7FB',
                       }}
                     >
-                      {typedSignature}
-                    </div>
-                    <div style={{ color: '#6B7280', fontSize: '11px', marginTop: '8px', fontWeight: 800 }}>
-                      Signature preview
-                    </div>
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 )}
               </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={addStainChoice}
+              style={{
+                width: '100%',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                marginTop: 6,
+                padding: '12px 14px',
+                borderRadius: 12,
+                border: '1px dashed rgba(255,255,255,0.10)',
+                background: 'transparent',
+                color: '#F5F7FB',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              <Plus size={16} /> Add another stain
+            </button>
+          </div>
+
+          {/* Notes */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={{ ...labelStyle, marginTop: 24 }}>Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any stain notes, sample board notes, room notes, or special instructions..."
+              rows={4}
+              style={{
+                ...fieldStyle,
+                minHeight: 120,
+                resize: 'vertical',
+              }}
+            />
+          </div>
+
+          {/* Delivery Options */}
+          <div
+            style={{
+              background: 'rgba(0,0,0,0.22)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 18,
+            }}
+          >
+            <div
+              style={{
+                color: '#FFFFFF',
+                fontSize: 16,
+                fontWeight: 800,
+                marginBottom: 4,
+              }}
+            >
+              Send to client via
+            </div>
+            <div style={helperTextStyle}>
+              Choose how the client will receive the sign off request.
+            </div>
+
+            <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+              <label
+                style={{
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  borderRadius: 14,
+                  padding: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  color: '#F5F7FB',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={sendViaText}
+                  onChange={(e) => setSendViaText(e.target.checked)}
+                />
+                <div>
+                  <div style={{ fontWeight: 700 }}>Text (SMS)</div>
+                  <div style={helperTextStyle}>Send a link by text message.</div>
+                </div>
+              </label>
+
+              <label
+                style={{
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  borderRadius: 14,
+                  padding: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  color: '#F5F7FB',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={sendViaEmail}
+                  onChange={(e) => setSendViaEmail(e.target.checked)}
+                />
+                <div>
+                  <div style={{ fontWeight: 700 }}>Email</div>
+                  <div style={helperTextStyle}>Email the sign off for approval.</div>
+                </div>
+              </label>
+
+              <label
+                style={{
+                  border: '1px solid #8F56FF',
+                  background: 'rgba(143,86,255,0.12)',
+                  borderRadius: 14,
+                  padding: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  color: '#F5F7FB',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={sendViaPortal}
+                  onChange={(e) => setSendViaPortal(e.target.checked)}
+                />
+                <div>
+                  <div style={{ fontWeight: 700 }}>Client Portal</div>
+                  <div style={helperTextStyle}>
+                    Publish in the portal for approval.
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Signature Card */}
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.96)',
+              borderRadius: 16,
+              padding: 18,
+              marginBottom: 18,
+            }}
+          >
+            <div
+              style={{
+                color: '#16181D',
+                fontSize: 20,
+                fontWeight: 800,
+                marginBottom: 4,
+              }}
+            >
+              Sign Document
+            </div>
+            <div
+              style={{
+                color: 'rgba(22,24,29,0.70)',
+                fontSize: 14,
+                marginBottom: 16,
+              }}
+            >
+              Please sign below to confirm your stain selection
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 12,
+                marginBottom: 14,
+              }}
+            >
+              <button
+                type="button"
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  border: 'none',
+                  background: 'linear-gradient(90deg, #8B2BC7 0%, #8F56FF 100%)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Draw
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(22,24,29,0.15)',
+                  background: '#F5F5F7',
+                  color: '#16181D',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Type
+              </button>
+            </div>
+
+            <label
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                color: 'rgba(22,24,29,0.55)',
+                marginBottom: 8,
+                display: 'block',
+              }}
+            >
+              Type Full Name as Signature
+            </label>
+
+            <input
+              type="text"
+              value={typedSignature}
+              onChange={(e) => setTypedSignature(e.target.value)}
+              placeholder="Type your full name here..."
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                minHeight: 48,
+                borderRadius: 12,
+                border: '1px solid rgba(22,24,29,0.12)',
+                backgroundColor: '#FFFFFF',
+                color: '#16181D',
+                fontSize: 15,
+                outline: 'none',
+                boxSizing: 'border-box',
+                marginBottom: 12,
+              }}
+            />
+
+            {typedSignature && (
+              <div
+                style={{
+                  padding: 20,
+                  border: '1px solid rgba(22,24,29,0.12)',
+                  borderRadius: 12,
+                  textAlign: 'center',
+                  fontFamily: "'Brush Script MT', 'Dancing Script', cursive",
+                  fontSize: 28,
+                  color: '#16181D',
+                  background: '#FAFAFB',
+                  marginBottom: 14,
+                }}
+              >
+                {typedSignature}
+              </div>
             )}
 
-            {/* Agreement */}
             <label
               style={{
                 display: 'flex',
+                gap: 10,
                 alignItems: 'flex-start',
-                gap: '12px',
-                marginTop: '14px',
-                cursor: 'pointer',
-                padding: '12px',
-                backgroundColor: agreedToTerms ? hexToRgba(PRIMARY_ACTION, 0.08) : '#fff',
-                borderRadius: '12px',
-                border: `1px solid ${agreedToTerms ? PRIMARY_ACTION : '#E1E5EB'}`,
+                color: '#16181D',
+                fontSize: 15,
               }}
             >
               <input
                 type="checkbox"
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  accentColor: PRIMARY_ACTION,
-                  cursor: 'pointer',
-                  marginTop: '2px',
-                }}
+                style={{ marginTop: 4 }}
               />
-              <span style={{ color: '#111827', fontSize: '13px', lineHeight: 1.45, fontWeight: 700 }}>
-                I confirm the stain color(s) listed above are correct. I understand stain is permanent and changing color
-                after application requires re-sanding and may incur additional cost.
+              <span>
+                I confirm the stain color(s) listed above are approved.
               </span>
             </label>
 
-            {/* ✅ This used to be GREEN; now it matches PRIMARY_ACTION (purple) */}
-            {isSignatureComplete() && agreedToTerms && (
+            {canSubmit && (
               <div
                 style={{
+                  marginTop: 12,
+                  color: '#059669',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  marginTop: '12px',
-                  padding: '10px 12px',
-                  backgroundColor: hexToRgba(PRIMARY_ACTION, 0.12),
-                  borderRadius: '12px',
-                  border: `1px solid ${hexToRgba(PRIMARY_ACTION, 0.35)}`,
+                  gap: 6,
+                  fontWeight: 600,
                 }}
               >
-                <Check size={18} color={PRIMARY_ACTION} />
-                <span style={{ color: PRIMARY_ACTION, fontSize: '13px', fontWeight: 950 }}>
-                  Signature complete — ready to submit
-                </span>
+                <Check size={18} /> Signature complete
               </div>
             )}
           </div>
         </div>
 
-        {/* Footer actions */}
+        {/* Footer */}
         <div
           style={{
-            padding: '16px 20px',
-            borderTop: `1px solid ${colors.border}`,
             display: 'flex',
-            gap: '12px',
+            gap: 12,
+            padding: 20,
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+            background: 'rgba(23,23,26,0.94)',
+            flexShrink: 0,
           }}
         >
           <button
-            onClick={handleSave}
+            type="button"
+            onClick={handleSubmit}
+            disabled={!canSubmit}
             style={{
               flex: 1,
-              padding: '14px',
-              backgroundColor: 'transparent',
-              border: `1px solid ${colors.border}`,
-              borderRadius: '12px',
-              color: colors.text,
-              fontSize: '15px',
-              fontWeight: 900,
+              padding: '14px 16px',
+              borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.10)',
+              background: 'rgba(255,255,255,0.03)',
+              color: '#F5F7FB',
+              cursor: canSubmit ? 'pointer' : 'not-allowed',
+              opacity: canSubmit ? 1 : 0.5,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              fontWeight: 700,
+            }}
+          >
+            <Save size={18} /> Save
+          </button>
+
+          <button
+            type="button"
+            style={{
+              flex: 1,
+              padding: '14px 16px',
+              borderRadius: 12,
+              border: 'none',
+              backgroundColor: '#756554',
+              color: '#fff',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px',
+              gap: 8,
+              fontWeight: 700,
             }}
           >
-            <Save size={18} />
-            Save
-          </button>
-
-          <button
-            onClick={handleSend}
-            disabled={!hasAnySendVia}
-            style={{
-              flex: 1,
-              padding: '14px',
-              backgroundColor: !hasAnySendVia ? 'rgba(0,0,0,0.15)' : PRIMARY_ACTION,
-              border: 'none',
-              borderRadius: '12px',
-              color: '#fff',
-              fontSize: '15px',
-              fontWeight: 950,
-              cursor: !hasAnySendVia ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              opacity: !hasAnySendVia ? 0.7 : 1,
-            }}
-          >
-            <Send size={18} />
-            Send to Client
+            <Send size={18} /> Send to Customer
           </button>
         </div>
       </div>
